@@ -87,8 +87,8 @@ export default async function SignInPage() {
             {pending ? (
               <>
                 <Eyebrow>Check your phone</Eyebrow>
-                <h2 className="mt-2 text-3xl sm:text-4xl">Enter your code</h2>
-                <p className="mt-3 text-ink-500">
+                <h2 className="mt-2 text-3xl leading-tight sm:mt-3 sm:text-4xl tall:mt-4">Enter your code</h2>
+                <p className="mt-2 text-ink-500 sm:mt-3 tall:mt-4">
                   We texted a code to <strong className="text-ink">{maskPhone(pending.phone)}</strong>. It works for 10 minutes.
                 </p>
                 {demoCode ? (
@@ -116,11 +116,11 @@ export default async function SignInPage() {
             ) : (
               <>
                 <Eyebrow>Welcome to the Center</Eyebrow>
-                <h2 className="mt-2 text-3xl sm:text-4xl">
+                <h2 className="mt-2 text-3xl leading-tight sm:mt-3 sm:text-4xl tall:mt-4">
                   <BrushText>Sign in</BrushText>
                 </h2>
-                <p className="mt-2 text-ink-500 tall:mt-3">No password. We&apos;ll text you a code.</p>
-                <div className="mt-5 tall:mt-7">
+                <p className="mt-2 text-ink-500 sm:mt-3 tall:mt-4">No password. We&apos;ll text you a code.</p>
+                <div className="mt-5 sm:mt-6 tall:mt-8">
                   <RequestCodeForm />
                 </div>
                 <p className="mt-5 border-t border-ink-100 pt-4 text-sm text-ink-500 tall:mt-7 tall:pt-5">
