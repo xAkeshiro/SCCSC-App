@@ -1,14 +1,15 @@
 import type { Metadata } from "next";
-import { ArrowLeft, MessageSquareText } from "lucide-react";
+import { ArrowLeft, ArrowRight, MessageSquareText, Sparkles } from "lucide-react";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { Wordmark } from "@/components/brand";
-import { BrushText, Button, Eyebrow, HeartIcon, Notice } from "@/components/ui";
+import { BrushText, Button, Eyebrow, HeartIcon } from "@/components/ui";
 import { isDemoData } from "@/db";
 import { staff, staffRoles } from "@/db/schema";
+import { DEMO } from "@/db/seed";
 import { withSystem } from "@/db/with-user";
 import { getSessionUserId, getPendingSignIn } from "@/lib/auth/session";
-import { getViewer } from "@/lib/auth/viewer";
+import { getViewer, type Role } from "@/lib/auth/viewer";
 import { maskPhone } from "@/lib/phone";
 import { signInAsDemoPerson, startOver } from "./actions";
 import { RequestCodeForm, VerifyCodeForm } from "./forms";
@@ -16,7 +17,6 @@ import Image from "next/image";
 
 export const metadata: Metadata = { title: "Sign in" };
 
-const ROLE_LABEL = { employee: "Employee", coordinator: "Coordinator", finance: "Finance", admin: "Admin" } as const;
 
 const ROLE_ORDER = ["employee", "coordinator", "finance", "admin"] as const;
 const mainRole = (roles: string[]) => Math.max(...roles.map((r) => ROLE_ORDER.indexOf(r as (typeof ROLE_ORDER)[number])));
@@ -76,23 +76,24 @@ export default async function SignInPage() {
         <p className="relative text-sm text-white/60">Sacramento Chinese Community Service Center</p>
       </aside>
 
-      <main className="flex flex-col bg-surface">
+      <main className="flex min-h-dvh flex-col bg-surface lg:min-h-0">
         {isDemoData() ? (
-          <div className="bg-ink px-4 py-2 text-center text-sm text-white">
+          // On phones the demo picker and demo text message say "Demo" already; save the height.
+          <div className="hidden bg-ink px-4 py-2 text-center text-sm text-white sm:block">
             <strong className="font-semibold">Demo</strong> · fake people and data only
           </div>
         ) : null}
-        <div className="mx-auto flex w-full max-w-md flex-1 flex-col justify-center px-4 py-10 sm:px-6">
-          <div className="mb-8 flex items-center gap-2.5 lg:hidden">
-            <Image src="/brand/xin-mark-square.svg" alt="" width={40} height={40} />
+        <div className="mx-auto flex w-full max-w-[27rem] flex-1 flex-col justify-center gap-3 px-4 py-4 sm:gap-4 sm:px-6 sm:py-6">
+          <div className="flex items-center gap-2.5 lg:hidden">
+            <Image src="/brand/xin-mark-square.svg" alt="" width={40} height={40} className="size-8" />
             <Wordmark compact />
           </div>
 
-          <div className="card p-6 sm:p-8">
+          <div className="card p-5 sm:p-7">
             {pending ? (
               <>
                 <Eyebrow>Check your phone</Eyebrow>
-                <h2 className="mt-2 text-3xl">Enter your code</h2>
+                <h2 className="mt-1.5 text-3xl">Enter your code</h2>
                 <p className="mt-2 text-ink-500">
                   We texted a code to <strong className="text-ink">{maskPhone(pending.phone)}</strong>. It works for 10 minutes.
                 </p>
@@ -112,7 +113,7 @@ export default async function SignInPage() {
                 <div className="mt-6">
                   <VerifyCodeForm />
                 </div>
-                <form action={startOver} className="mt-2 border-t border-ink-100 pt-4">
+                <form action={startOver} className="mt-4 border-t border-ink-100 pt-4">
                   <Button type="submit" variant="ghost" size="sm" className="w-full text-ink-700">
                     <ArrowLeft aria-hidden className="size-4" /> Use a different name or number
                   </Button>
@@ -121,51 +122,74 @@ export default async function SignInPage() {
             ) : (
               <>
                 <Eyebrow>Welcome to the Center</Eyebrow>
-                <h2 className="mt-2 text-3xl">
+                <h2 className="mt-1.5 text-3xl">
                   <BrushText>Sign in</BrushText>
                 </h2>
-                <p className="mt-2 mb-6 text-ink-500">No password needed. We&apos;ll text you a code.</p>
-                <RequestCodeForm />
-                <p className="mt-5 text-sm text-ink-500">
-                  New here? Sign in the same way. If we can&apos;t match you to the staff list, an admin will check and
-                  approve your account, usually within a day or two.
+                <p className="mt-2 text-ink-500">No password. We&apos;ll text you a code.</p>
+                <div className="mt-5">
+                  <RequestCodeForm />
+                </div>
+                <p className="mt-5 border-t border-ink-100 pt-4 text-sm text-ink-500">
+                  <span className="font-semibold text-ink-700">New here?</span> Sign in the same way. An admin will approve
+                  you within a day or two.
                 </p>
               </>
             )}
           </div>
 
-          {people.length > 0 ? (
-            <section aria-labelledby="demo-people" className="mt-8">
-              <h2 id="demo-people" className="text-lg">
-                Exploring the demo?
-              </h2>
-              <p className="mt-1 text-sm text-ink-500">Skip the code and sign in as one of these made-up people:</p>
-              <ul className="mt-3 grid gap-2">
-                {people.map((p) => (
-                  <li key={p.id}>
-                    <form action={signInAsDemoPerson}>
-                      <input type="hidden" name="staffId" value={p.id} />
-                      <button
-                        type="submit"
-                        className="flex min-h-12 w-full items-center justify-between gap-3 rounded-[var(--radius-btn)] border border-line bg-white px-4 py-2 text-left hover:border-brand-600 hover:bg-brand-50"
-                      >
-                        <span className="font-semibold">{p.name}</span>
-                        <span className="text-right text-sm text-ink-500">
-                          {p.roles.map((r) => ROLE_LABEL[r]).join(" · ")}
-                        </span>
-                      </button>
-                    </form>
-                  </li>
-                ))}
-              </ul>
-              <Notice className="mt-4" title="Try the real sign-in too">
-                <strong>Felix Hartwell</strong>, (916) 555-0108 is on the staff list but hasn&apos;t signed in yet. Any other
-                name and number goes to the admin&apos;s approval queue.
-              </Notice>
-            </section>
-          ) : null}
+          {people.length > 0 && !pending ? <DemoPicker people={people} /> : null}
         </div>
       </main>
     </div>
+  );
+}
+
+const GROUPS = [
+  { role: "employee", label: "Employees" },
+  { role: "coordinator", label: "Coordinators" },
+  { role: "finance", label: "Finance" },
+  { role: "admin", label: "Admins" },
+] as const;
+
+/** Demo only: pick a made-up person and skip the code. One compact row, so the page fits on screen. */
+function DemoPicker({ people }: { people: { id: string; name: string; roles: Role[] }[] }) {
+  return (
+    <section aria-labelledby="demo-people" className="rounded-[var(--radius-card)] border border-dashed border-ink-300 bg-white/70 p-4">
+      <form action={signInAsDemoPerson}>
+        <label id="demo-people" htmlFor="demo-person" className="flex items-center gap-2 text-sm font-semibold">
+          <Sparkles aria-hidden className="size-4 text-brand-600" />
+          Demo with fake data: sign in as
+        </label>
+        <div className="mt-2 flex gap-2">
+          <select
+            id="demo-person"
+            name="staffId"
+            className="field min-w-0 flex-1"
+            aria-label="Demo person"
+            // Start with the first person in the README walkthrough.
+            defaultValue={people.some((p) => p.id === DEMO.rowan.staffId) ? DEMO.rowan.staffId : undefined}
+          >
+            {GROUPS.map((g) => {
+              const inGroup = people.filter((p) => ROLE_ORDER[mainRole(p.roles)] === g.role);
+              return inGroup.length ? (
+                <optgroup key={g.role} label={g.label}>
+                  {inGroup.map((p) => (
+                    <option key={p.id} value={p.id}>
+                      {p.name}
+                    </option>
+                  ))}
+                </optgroup>
+              ) : null;
+            })}
+          </select>
+          <Button type="submit" variant="dark" className="shrink-0">
+            Explore <ArrowRight aria-hidden className="size-4" />
+          </Button>
+        </div>
+        <p className="mt-2 text-xs text-ink-500">
+          Or try the real sign-in: <strong className="text-ink-700">Felix Hartwell</strong>, (916) 555-0108
+        </p>
+      </form>
+    </section>
   );
 }

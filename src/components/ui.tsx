@@ -185,6 +185,7 @@ export function Field({
   label,
   htmlFor,
   hint,
+  hintBeside = false,
   error,
   optional,
   children,
@@ -193,6 +194,8 @@ export function Field({
   label: ReactNode;
   htmlFor: string;
   hint?: ReactNode;
+  /** Show the hint on the label's line (saves height on short forms). */
+  hintBeside?: boolean;
   error?: string | null;
   optional?: boolean;
   children: ReactNode;
@@ -200,12 +203,19 @@ export function Field({
 }) {
   return (
     <div className={className}>
-      <label htmlFor={htmlFor} className="field-label">
-        {label}
-        {optional ? <span className="ml-1 font-normal text-ink-500">(optional)</span> : null}
-      </label>
+      <div className={hintBeside ? "mb-1.5 flex flex-wrap items-baseline justify-between gap-x-3" : undefined}>
+        <label htmlFor={htmlFor} className={cx("field-label", hintBeside && "mb-0")}>
+          {label}
+          {optional ? <span className="ml-1 font-normal text-ink-500">(optional)</span> : null}
+        </label>
+        {hint && hintBeside ? (
+          <span id={`${htmlFor}-hint`} className="text-sm text-ink-500">
+            {hint}
+          </span>
+        ) : null}
+      </div>
       {children}
-      {hint && !error ? (
+      {hint && !hintBeside && !error ? (
         <span id={`${htmlFor}-hint`} className="field-hint">
           {hint}
         </span>

@@ -8,9 +8,9 @@ export function RequestCodeForm() {
   const [state, action, pending] = useActionState<RequestCodeState, FormData>(requestCode, {});
   const e = state.errors ?? {};
   return (
-    <form action={action} className="space-y-5" noValidate>
+    <form action={action} className="space-y-4" noValidate>
       {state.message ? <Notice tone="error">{state.message}</Notice> : null}
-      <Field label="Full name" htmlFor="name" hint="As it appears on your paycheck." error={e.name}>
+      <Field label="Full name" htmlFor="name" hint="As on your paycheck" hintBeside error={e.name}>
         <input
           id="name"
           name="name"
@@ -22,7 +22,7 @@ export function RequestCodeForm() {
           {...describedBy("name", { hint: true, error: e.name })}
         />
       </Field>
-      <Field label="Mobile number" htmlFor="phone" hint="The number you gave payroll. We'll text you a code." error={e.phone}>
+      <Field label="Mobile number" htmlFor="phone" hint="The one payroll has" hintBeside error={e.phone}>
         <input
           id="phone"
           name="phone"
@@ -36,7 +36,7 @@ export function RequestCodeForm() {
           {...describedBy("phone", { hint: true, error: e.phone })}
         />
       </Field>
-      <Button type="submit" size="lg" className="w-full" disabled={pending}>
+      <Button type="submit" size="lg" className="mt-1 w-full" disabled={pending}>
         {pending ? "Sending…" : "Text me a code"}
       </Button>
     </form>

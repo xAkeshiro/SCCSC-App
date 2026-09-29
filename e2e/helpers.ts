@@ -4,7 +4,8 @@ import { expect, type Page } from "@playwright/test";
 export async function signInAs(page: Page, name: string) {
   await page.context().clearCookies();
   await page.goto("/sign-in");
-  await page.getByRole("button", { name: new RegExp(`^${name}`) }).click();
+  await page.getByLabel("Demo person").selectOption({ label: name });
+  await page.getByRole("button", { name: "Explore" }).click();
   await expect(page).toHaveURL(/\/$/);
 }
 

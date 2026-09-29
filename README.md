@@ -21,7 +21,7 @@ filled with fake demo data on first start. Delete `.data/` to start over.
 
 ## Demo walkthrough (about 5 minutes)
 
-The sign-in page lists made-up people you can sign in as without a code.
+On the sign-in page, pick a made-up person from the **Demo** dropdown and press **Explore** to skip the code.
 
 1. **Rowan Ellery (employee).** The home page shows what's not submitted, waiting, approved
    and paid. Press **Log a trip**: pick Main office to Cedar Grove, tick Round trip, and the
