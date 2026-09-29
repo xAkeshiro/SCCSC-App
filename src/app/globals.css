@@ -51,6 +51,9 @@
   --shadow-card-sm: 0 2px 10px 0 rgb(29 29 29 / 0.07);
 }
 
+/* Screens at least 800px tall get roomier spacing (e.g. the sign-in card); shorter ones stay compact. */
+@custom-variant tall (@media (min-height: 50rem));
+
 @layer base {
   html {
     -webkit-text-size-adjust: 100%;

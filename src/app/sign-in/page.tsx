@@ -77,24 +77,18 @@ export default async function SignInPage() {
       </aside>
 
       <main className="flex min-h-dvh flex-col bg-surface lg:min-h-0">
-        {isDemoData() ? (
-          // On phones the demo picker and demo text message say "Demo" already; save the height.
-          <div className="hidden bg-ink px-4 py-2 text-center text-sm text-white sm:block">
-            <strong className="font-semibold">Demo</strong> · fake people and data only
-          </div>
-        ) : null}
-        <div className="mx-auto flex w-full max-w-[27rem] flex-1 flex-col justify-center gap-3 px-4 py-4 sm:gap-4 sm:px-6 sm:py-6">
+        <div className="mx-auto flex w-full max-w-[31rem] flex-1 flex-col justify-center gap-3 px-4 py-4 sm:gap-4 sm:px-6 tall:gap-5 tall:py-8">
           <div className="flex items-center gap-2.5 lg:hidden">
             <Image src="/brand/xin-mark-square.svg" alt="" width={40} height={40} className="size-8" />
             <Wordmark compact />
           </div>
 
-          <div className="card p-5 sm:p-7">
+          <div className="card p-6 shadow-[var(--shadow-card)] sm:px-9 sm:py-7 tall:sm:px-10 tall:sm:py-10">
             {pending ? (
               <>
                 <Eyebrow>Check your phone</Eyebrow>
-                <h2 className="mt-1.5 text-3xl">Enter your code</h2>
-                <p className="mt-2 text-ink-500">
+                <h2 className="mt-2 text-3xl sm:text-4xl">Enter your code</h2>
+                <p className="mt-3 text-ink-500">
                   We texted a code to <strong className="text-ink">{maskPhone(pending.phone)}</strong>. It works for 10 minutes.
                 </p>
                 {demoCode ? (
@@ -122,14 +116,14 @@ export default async function SignInPage() {
             ) : (
               <>
                 <Eyebrow>Welcome to the Center</Eyebrow>
-                <h2 className="mt-1.5 text-3xl">
+                <h2 className="mt-2 text-3xl sm:text-4xl">
                   <BrushText>Sign in</BrushText>
                 </h2>
-                <p className="mt-2 text-ink-500">No password. We&apos;ll text you a code.</p>
-                <div className="mt-5">
+                <p className="mt-2 text-ink-500 tall:mt-3">No password. We&apos;ll text you a code.</p>
+                <div className="mt-5 tall:mt-7">
                   <RequestCodeForm />
                 </div>
-                <p className="mt-5 border-t border-ink-100 pt-4 text-sm text-ink-500">
+                <p className="mt-5 border-t border-ink-100 pt-4 text-sm text-ink-500 tall:mt-7 tall:pt-5">
                   <span className="font-semibold text-ink-700">New here?</span> Sign in the same way. An admin will approve
                   you within a day or two.
                 </p>
@@ -154,7 +148,7 @@ const GROUPS = [
 /** Demo only: pick a made-up person and skip the code. One compact row, so the page fits on screen. */
 function DemoPicker({ people }: { people: { id: string; name: string; roles: Role[] }[] }) {
   return (
-    <section aria-labelledby="demo-people" className="rounded-[var(--radius-card)] border border-dashed border-ink-300 bg-white/70 p-4">
+    <section aria-labelledby="demo-people" className="rounded-[var(--radius-card)] border border-dashed border-ink-300 bg-white/70 p-4 sm:px-5">
       <form action={signInAsDemoPerson}>
         <label id="demo-people" htmlFor="demo-person" className="flex items-center gap-2 text-sm font-semibold">
           <Sparkles aria-hidden className="size-4 text-brand-600" />
