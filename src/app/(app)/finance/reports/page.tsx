@@ -88,7 +88,7 @@ export default async function ReportsPage({ searchParams }: PageProps<"/finance/
         </Link>
       </div>
 
-      <div className="mt-4 grid gap-6 lg:grid-cols-2">
+      <div className="mt-4 grid grid-cols-1 gap-6 lg:grid-cols-2">
         {[
           { title: "By employee", rows: report.byEmployee },
           { title: "By program or grant", rows: report.byProgram },

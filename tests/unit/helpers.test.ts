@@ -83,3 +83,16 @@ describe("demo distance estimate", () => {
     expect(demoEstimateMiles([office], false)).toBeNull();
   });
 });
+
+describe("sign-in code provider", () => {
+  it("refuses to show codes on screen when a real database is configured", async () => {
+    const { getCodeProvider } = await import("@/lib/auth/codes");
+    expect(getCodeProvider().showsCodeOnScreen).toBe(true);
+    process.env.DATABASE_URL = "postgres://example/real";
+    try {
+      expect(() => getCodeProvider()).toThrow(/can't be used with a real database/);
+    } finally {
+      delete process.env.DATABASE_URL;
+    }
+  });
+});

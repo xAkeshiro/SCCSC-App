@@ -164,6 +164,13 @@ This is a starting point for discussion, not a final schema.
 11. New: which payroll export will the roster come from (Paychex report columns), and should the
     roster store work or personal mobile numbers?
 12. New: which SMS provider for sign-in codes, and is the per-text cost approved?
+13. New: how old can a trip be when it's logged? (A setting, 365 days to start.)
+14. New: is the wording employees confirm when they submit right? ("These trips were for SCCSC
+    business, in my own vehicle, and the dates, places and miles are correct. My normal commute
+    is not included.") Finance or the auditor should approve it.
+15. New: amounts are rounded to the cent per trip, and the claim total is the sum. Is that how
+    finance wants it, or should rounding happen once per claim?
+16. New: which claims can be approved in bulk? (A setting: under $100 with nothing flagged.)
 
 ## 9. Rollout plan
 

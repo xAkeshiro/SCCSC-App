@@ -7,9 +7,10 @@ export type Settings = {
   bulkApproveMaxCents: number;
   requireProgram: boolean;
   sessionDays: number;
+  maxTripAgeDays: number;
 };
 
-const DEFAULTS: Settings = { homeTripRule: "flag", bulkApproveMaxCents: 10000, requireProgram: true, sessionDays: 30 };
+const DEFAULTS: Settings = { homeTripRule: "flag", bulkApproveMaxCents: 10000, requireProgram: true, sessionDays: 30, maxTripAgeDays: 365 };
 
 export async function readSettings(tx: Tx): Promise<Settings> {
   const all = await tx.select().from(settings);
@@ -20,6 +21,7 @@ export async function readSettings(tx: Tx): Promise<Settings> {
     bulkApproveMaxCents: Number(get("bulk_approve_max_cents") ?? DEFAULTS.bulkApproveMaxCents),
     requireProgram: get("require_program") === undefined ? DEFAULTS.requireProgram : Boolean(get("require_program")),
     sessionDays: Number(get("session_days") ?? DEFAULTS.sessionDays) || DEFAULTS.sessionDays,
+    maxTripAgeDays: Number(get("max_trip_age_days") ?? DEFAULTS.maxTripAgeDays) || DEFAULTS.maxTripAgeDays,
   };
 }
 

@@ -91,6 +91,11 @@ export const DEFAULT_SETTINGS: { key: string; value: unknown; description: strin
   },
   { key: "require_program", value: true, description: "Every trip must have a program or grant code." },
   { key: "session_days", value: 30, description: "How long someone stays signed in on a device." },
+  {
+    key: "max_trip_age_days",
+    value: 365,
+    description: "Oldest trip that can be logged, in days. A starting guess; confirm with finance (brief, open question 13).",
+  },
 ];
 
 function isoDaysAgo(days: number, from = new Date()): string {

@@ -86,7 +86,7 @@ export default async function BatchPage({ params, searchParams }: PageProps<"/fi
         ))}
       </ol>
 
-      <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_22rem]">
+      <div className="grid grid-cols-1 gap-8 lg:grid-cols-[minmax(0,1fr)_22rem]">
         <div className="space-y-8">
           <section aria-labelledby="claims">
             <h2 id="claims" className="text-2xl">

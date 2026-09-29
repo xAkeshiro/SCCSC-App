@@ -89,7 +89,7 @@ export default async function ClaimPage({ params, searchParams }: PageProps<"/cl
         </Notice>
       ) : null}
 
-      <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_22rem]">
+      <div className="grid grid-cols-1 gap-8 lg:grid-cols-[minmax(0,1fr)_22rem]">
         <div className="space-y-8">
           <section aria-labelledby="trips">
             <h2 id="trips" className="text-2xl">

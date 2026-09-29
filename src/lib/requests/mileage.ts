@@ -17,8 +17,6 @@ import { mileageAmountCents, normalizeMiles } from "@/lib/money";
 import { readSettings } from "@/lib/settings";
 
 export const REQUEST_TYPE = "mileage";
-/** Oldest trip date accepted, in days. Older trips need a conversation with finance. */
-export const MAX_TRIP_AGE_DAYS = 365;
 export const MAX_STOPS = 8;
 
 // ---------------------------------------------------------------------------------------------
@@ -122,7 +120,9 @@ export async function workOutTrip(tx: Tx, input: TripInput): Promise<{ trip: Wor
 
   if (!/^\d{4}-\d{2}-\d{2}$/.test(input.date) || Number.isNaN(Date.parse(input.date))) errors.date = "Enter the date you drove.";
   else if (input.date > today) errors.date = "The date can't be in the future.";
-  else if (daysBetween(input.date, today) > MAX_TRIP_AGE_DAYS) errors.date = "This trip is more than a year old. Please talk to finance.";
+  else if (daysBetween(input.date, today) > settings.maxTripAgeDays) {
+    errors.date = `Trips older than ${settings.maxTripAgeDays} days can't be logged here. Please talk to finance.`;
+  }
 
   const from = await resolvePoint(tx, input.from);
   if (!from) errors.from = "Choose where you started, or type the address.";

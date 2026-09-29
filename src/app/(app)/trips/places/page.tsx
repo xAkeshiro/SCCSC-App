@@ -26,13 +26,13 @@ export default async function PlacesPage({ searchParams }: PageProps<"/trips/pla
           {error}
         </Notice>
       ) : null}
-      <div className="grid gap-8 lg:grid-cols-2">
+      <div className="grid grid-cols-1 gap-8 lg:grid-cols-2">
         <section aria-labelledby="mine" className="space-y-4">
           <h2 id="mine" className="text-2xl">
             My places
           </h2>
           {mine.length === 0 ? <p className="text-ink-500">You haven&apos;t saved any places yet.</p> : null}
-          <ul className="grid gap-2">
+          <ul className="grid grid-cols-1 gap-2">
             {mine.map((p) => (
               <li key={p.id} className="card flex items-center justify-between gap-3 p-4">
                 <div className="flex min-w-0 gap-3">

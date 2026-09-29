@@ -8,7 +8,7 @@
  */
 import { createHash, randomInt } from "node:crypto";
 import { sql } from "drizzle-orm";
-import type { Tx } from "@/db";
+import { hasHostedDatabase, type Tx } from "@/db";
 import { rows } from "@/db/with-user";
 
 export type SendResult = { ok: true; demoCode?: string } | { ok: false; message: string };
@@ -93,5 +93,10 @@ export const demoCodeProvider: CodeProvider = {
 };
 
 export function getCodeProvider(): CodeProvider {
+  // The demo provider shows codes on screen, which would let anyone sign in as anyone.
+  // It must never run against real data: a real SMS provider comes with Supabase (M7).
+  if (hasHostedDatabase()) {
+    throw new Error("No text message provider is set up. The demo sign-in code provider can't be used with a real database.");
+  }
   return demoCodeProvider;
 }

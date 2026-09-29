@@ -16,3 +16,8 @@ Log of significant project decisions. Newest at the bottom.
 | 2026-09-29 | Reviewers and finance see "Home" instead of a home address | Brief: trip addresses may include home addresses; limit who sees them |
 | 2026-09-29 | Until a maps provider is chosen, miles are estimated from saved places (labeled as a demo estimate) or typed in | Provider and cost are still open; the estimate shows the workflow without committing to one |
 | 2026-09-29 | The home-trip rule is a setting (allow / flag / block), starting at "flag for the approver" | Open question 3; don't guess the policy |
+| 2026-09-29 | Nobody reviews their own claim. A coordinator's own claims go to their coordinator; admins can review anyone's claim as a fallback | Separation of duties; covers people without a coordinator and coordinators who are away (open question 5) |
+| 2026-09-29 | Employees can withdraw a submitted claim before it's reviewed (it becomes a draft) | Fix a mistake without asking the coordinator to return it |
+| 2026-09-29 | Bulk approval only for claims under a set total with nothing flagged (setting, $100 to start); the server re-checks | "Bulk approve for simple cases" without letting flagged trips slip through |
+| 2026-09-29 | Batch export is two generic CSV layouts (trip detail, and totals per employee and program) until the financial system's import format is known. Downloading freezes the batch | Open question 1; freezing keeps the file and the batch in agreement |
+| 2026-09-29 | Rules that are guesses live in the settings table: home trips, bulk approval limit, program required, session length, oldest trip | CLAUDE.md: don't guess business rules; make them configurable |
