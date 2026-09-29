@@ -66,7 +66,8 @@ export function BottomNav({ items, badges, canLogTrips }: { items: NavItem[]; ba
 
   const tab = (item: NavItem, badge?: number) => {
     const Icon = ICONS[item.icon];
-    const active = isActive(pathname, item.href);
+    // The Log trip button has its own highlight.
+    const active = isActive(pathname, item.href) && pathname !== "/trips/new";
     return (
       <Link
         key={item.href}

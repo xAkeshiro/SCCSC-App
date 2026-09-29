@@ -1,7 +1,8 @@
 "use client";
 
 import { Check, X } from "lucide-react";
-import { useActionState, useState } from "react";
+import { useState } from "react";
+import { useFormAction } from "@/components/use-form-action";
 import { Button, Field, Notice } from "@/components/ui";
 import { approveRequest, rejectRequest, type ReviewState } from "./actions";
 
@@ -20,8 +21,8 @@ const ROLES = [
 
 export function AccessRequestCard({ request, coordinators, programs }: Props) {
   const [mode, setMode] = useState<"idle" | "approve" | "reject">("idle");
-  const [approved, approve, approving] = useActionState<ReviewState, FormData>(approveRequest.bind(null, request.id), {});
-  const [rejected, reject, rejecting] = useActionState<ReviewState, FormData>(rejectRequest.bind(null, request.id), {});
+  const [approved, approve, approving] = useFormAction<ReviewState>(approveRequest.bind(null, request.id), {});
+  const [rejected, reject, rejecting] = useFormAction<ReviewState>(rejectRequest.bind(null, request.id), {});
   const id = request.id.slice(0, 8);
 
   return (
@@ -54,7 +55,7 @@ export function AccessRequestCard({ request, coordinators, programs }: Props) {
       </div>
 
       {mode === "approve" ? (
-        <form action={approve} className="mt-5 grid gap-5 border-t border-ink-100 pt-5 sm:grid-cols-2">
+        <form onSubmit={approve} className="mt-5 grid gap-5 border-t border-ink-100 pt-5 sm:grid-cols-2">
           {approved.error ? <Notice tone="error" className="sm:col-span-2">{approved.error}</Notice> : null}
           {!request.matchedName ? (
             <Field label="Name on the staff list" htmlFor={`name-${id}`} hint="Fix the spelling if needed." className="sm:col-span-2">
@@ -107,7 +108,7 @@ export function AccessRequestCard({ request, coordinators, programs }: Props) {
       ) : null}
 
       {mode === "reject" ? (
-        <form action={reject} className="mt-5 space-y-4 border-t border-ink-100 pt-5">
+        <form onSubmit={reject} className="mt-5 space-y-4 border-t border-ink-100 pt-5">
           <Field label="Why?" htmlFor={`note-${id}`} hint="They'll see this note." error={rejected.error}>
             <textarea id={`note-${id}`} name="note" rows={2} className="field" required />
           </Field>
