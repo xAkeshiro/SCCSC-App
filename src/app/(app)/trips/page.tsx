@@ -8,6 +8,7 @@ import { requireRole } from "@/lib/auth/viewer";
 import { myTrips } from "@/lib/data/trips";
 import { formatDay, plural } from "@/lib/format";
 import { formatCents, formatMiles } from "@/lib/money";
+import { routeText } from "@/lib/requests/pickable";
 import { claimNumber } from "@/lib/requests/status";
 
 export const metadata: Metadata = { title: "Trips" };
@@ -110,8 +111,7 @@ export default async function TripsPage({ searchParams }: PageProps<"/trips">) {
                     <td className="px-5 py-3">
                       <span className="line-clamp-1">{t.purpose}</span>
                       <span className="text-sm text-ink-500">
-                        {[t.fromLabel, ...t.stops.map((s) => s.label), t.toLabel].join(" → ")}
-                        {t.roundTrip ? " and back" : ""}
+                        {routeText(t)}
                       </span>
                     </td>
                     <td className="px-5 py-3 text-right whitespace-nowrap">{formatCents(t.amountCents)}</td>

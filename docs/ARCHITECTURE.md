@@ -128,8 +128,8 @@ replace it, with results cached.
 | M0 | Foundation: docs, scaffold, design system, database + RLS, seed, tests | done |
 | M1 | Sign-in with phone + code, roster match, access requests, demo people | done |
 | M2 | Log, edit and delete trips; saved places; miles and amount | done |
-| M3 | Submit claims, claim history, return and resubmit, updates, printable claim | in progress |
-| M4 | Coordinator review: approve, return, deny, bulk approve | planned |
+| M3 | Submit claims, claim history, return and resubmit, updates, printable claim | done |
+| M4 | Coordinator review: approve, return, deny, bulk approve | in progress |
 | M5 | Finance: batches, CSV export, mark paid, printable batch, simple report | planned |
 | M6 | Admin: roster import, roles and coordinators, rates, programs, settings, audit view | later |
 | M7 | Supabase + real text messages, then deploy to Vercel | later |

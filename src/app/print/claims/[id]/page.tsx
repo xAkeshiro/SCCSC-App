@@ -1,0 +1,117 @@
+import type { Metadata } from "next";
+import { notFound } from "next/navigation";
+import { PrintSheet } from "@/components/print-sheet";
+import { requireViewer } from "@/lib/auth/viewer";
+import { claimsForPrint } from "@/lib/data/claims";
+import { formatDateTime, formatDay } from "@/lib/format";
+import { formatCents, formatRate } from "@/lib/money";
+import { routeText } from "@/lib/requests/pickable";
+import { ACTION_LABEL, STATUS_LABEL, claimNumber } from "@/lib/requests/status";
+
+export const metadata: Metadata = { title: "Print claim" };
+
+export default async function PrintClaimPage({ params }: PageProps<"/print/claims/[id]">) {
+  const viewer = await requireViewer();
+  const { id } = await params;
+  const [claim] = await claimsForPrint(viewer, [id]);
+  if (!claim) notFound();
+  const miles = claim.trips.reduce((n, t) => n + Number(t.miles), 0);
+  const submitted = claim.events.find((e) => e.action === "submitted" || e.action === "resubmitted");
+
+  return (
+    <PrintSheet
+      title="Mileage reimbursement claim"
+      subtitle={
+        <>
+          Claim {claimNumber(claim.ref)} · {STATUS_LABEL[claim.status]}
+        </>
+      }
+    >
+      <dl className="grid grid-cols-3 gap-4">
+        <div>
+          <dt className="text-ink-500">Employee</dt>
+          <dd className="font-semibold">{claim.ownerName}</dd>
+        </div>
+        <div>
+          <dt className="text-ink-500">Submitted</dt>
+          <dd className="font-semibold">{claim.submittedAt ? formatDateTime(claim.submittedAt) : "Not yet"}</dd>
+        </div>
+        <div>
+          <dt className="text-ink-500">Total</dt>
+          <dd className="font-display text-lg font-semibold">{formatCents(claim.totalCents)}</dd>
+        </div>
+      </dl>
+
+      <table className="w-full border-collapse text-left">
+        <thead>
+          <tr className="border-b border-ink text-[12px]">
+            <th className="py-1.5 pr-2 font-semibold">Date</th>
+            <th className="py-1.5 pr-2 font-semibold">Route</th>
+            <th className="py-1.5 pr-2 font-semibold">Business purpose</th>
+            <th className="py-1.5 pr-2 font-semibold">Program</th>
+            <th className="py-1.5 pr-2 text-right font-semibold">Miles</th>
+            <th className="py-1.5 pr-2 text-right font-semibold">Rate</th>
+            <th className="py-1.5 text-right font-semibold">Amount</th>
+          </tr>
+        </thead>
+        <tbody>
+          {claim.trips.map((t) => (
+            <tr key={t.id} className="border-b border-ink-100 align-top">
+              <td className="py-1.5 pr-2 whitespace-nowrap">{formatDay(t.date, { withYear: true, weekday: false })}</td>
+              <td className="py-1.5 pr-2">
+                {routeText(t)}
+                {t.overrideReason ? <div className="text-[11px] text-ink-500">Miles changed: {t.overrideReason}</div> : null}
+              </td>
+              <td className="py-1.5 pr-2">{t.purpose}</td>
+              <td className="py-1.5 pr-2">{t.programCode}</td>
+              <td className="py-1.5 pr-2 text-right">{Number(t.miles).toFixed(1)}</td>
+              <td className="py-1.5 pr-2 text-right whitespace-nowrap">{formatRate(t.rateCents).replace(" per mile", "")}</td>
+              <td className="py-1.5 text-right">{formatCents(t.amountCents)}</td>
+            </tr>
+          ))}
+        </tbody>
+        <tfoot>
+          <tr className="border-t-2 border-ink font-semibold">
+            <td className="py-2" colSpan={4}>
+              Total ({claim.trips.length} trips)
+            </td>
+            <td className="py-2 pr-2 text-right">{miles.toFixed(1)}</td>
+            <td />
+            <td className="py-2 text-right">{formatCents(claim.totalCents)}</td>
+          </tr>
+        </tfoot>
+      </table>
+
+      <div className="grid grid-cols-2 gap-6">
+        <div className="rounded-[var(--radius-btn)] border border-ink-100 p-3">
+          <p className="font-semibold">Employee certification</p>
+          <p className="mt-1">
+            {submitted
+              ? `${submitted.actorName} confirmed these trips were for SCCSC business and the details are correct on ${formatDateTime(submitted.createdAt)}.`
+              : "Not submitted yet."}
+          </p>
+        </div>
+        <div className="rounded-[var(--radius-btn)] border border-ink-100 p-3">
+          <p className="font-semibold">Approval</p>
+          <p className="mt-1">
+            {claim.approval
+              ? `Approved electronically by ${claim.approval.actorName} on ${formatDateTime(claim.approval.createdAt)}.`
+              : "Not approved yet."}
+          </p>
+        </div>
+      </div>
+
+      <div>
+        <p className="font-semibold">History</p>
+        <ul className="mt-1 space-y-0.5">
+          {claim.events.map((e) => (
+            <li key={e.id}>
+              {formatDateTime(e.createdAt)}: {ACTION_LABEL[e.action]} by {e.actorName}
+              {e.comment ? ` (“${e.comment}”)` : ""}
+            </li>
+          ))}
+        </ul>
+      </div>
+    </PrintSheet>
+  );
+}

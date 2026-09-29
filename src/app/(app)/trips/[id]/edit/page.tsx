@@ -83,7 +83,8 @@ export default async function EditTripPage({ params, searchParams }: PageProps<"
           stops: trip.stops.map((s) => point(s.placeId, s.address)),
           to: point(trip.toPlaceId, trip.toAddress),
           roundTrip: trip.roundTrip,
-          miles: trip.miles,
+          // Miles that came from the estimate follow route changes; typed or changed miles stay put.
+          miles: trip.overrideReason || trip.milesEstimated === null ? trip.miles : null,
           overrideReason: trip.overrideReason ?? "",
           purpose: trip.purpose,
           programId: trip.programId ?? "",
