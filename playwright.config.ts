@@ -1,0 +1,27 @@
+import { defineConfig, devices } from "@playwright/test";
+
+const PORT = Number(process.env.E2E_PORT ?? 3100);
+
+export default defineConfig({
+  testDir: "./e2e",
+  fullyParallel: false,
+  workers: 1,
+  retries: 0,
+  reporter: [["list"]],
+  use: {
+    baseURL: `http://localhost:${PORT}`,
+    trace: "retain-on-failure",
+  },
+  projects: [
+    { name: "desktop", use: { ...devices["Desktop Chrome"] } },
+    { name: "phone", use: { ...devices["Pixel 7"] } },
+  ],
+  webServer: {
+    // Fresh in-memory demo database for every run.
+    command: `npx next build && npx next start -p ${PORT}`,
+    url: `http://localhost:${PORT}/sign-in`,
+    env: { DEMO_MODE: "true" },
+    timeout: 240_000,
+    reuseExistingServer: !process.env.CI,
+  },
+});

@@ -1,0 +1,125 @@
+@import "tailwindcss";
+
+/*
+ * Design tokens, taken from the live sccsc.org landing page (Elementor kit):
+ *   red #D0112B (hover #A50E22), text #1D1D1D, muted #6B6B6B, white, light gray sections,
+ *   Onest for headings, Instrument Sans for text, 8-12px corners, soft card shadows.
+ * Plus the brief's light red tint #F3C4CB and EB Garamond for the "mileage tracker" wordmark.
+ */
+@theme {
+  --color-brand-50: #fdecee;
+  --color-brand-100: #f9d7dc;
+  --color-brand-200: #f3c4cb;
+  --color-brand-500: #e0495d;
+  --color-brand-600: #d0112b;
+  --color-brand-700: #a50e22;
+  --color-brand-800: #7e0a1a;
+
+  --color-ink: #1d1d1d;
+  --color-ink-700: #333333;
+  --color-ink-500: #6b6b6b;
+  --color-ink-300: #a3a3a3;
+  --color-ink-100: #e6e6e6;
+  --color-ink-50: #f2f2f2;
+  --color-surface: #f7f7f7;
+  --color-line: #014a8e1a;
+  --color-navy: #014a8e;
+
+  /* Status colors. Text on its tint is at least 4.5:1. Labels always accompany color. */
+  --color-status-draft: #4a4a4a;
+  --color-status-draft-bg: #efefef;
+  --color-status-submitted: #014a8e;
+  --color-status-submitted-bg: #e5eef7;
+  --color-status-returned: #7a4b00;
+  --color-status-returned-bg: #fff1d6;
+  --color-status-approved: #1d6b32;
+  --color-status-approved-bg: #e4f3e8;
+  --color-status-denied: #a50e22;
+  --color-status-denied-bg: #fdecee;
+  --color-status-batched: #5b3a8c;
+  --color-status-batched-bg: #efe9f7;
+  --color-status-paid: #ffffff;
+  --color-status-paid-bg: #1d6b32;
+
+  --font-display: var(--font-onest), ui-sans-serif, system-ui, sans-serif;
+  --font-sans: var(--font-instrument), ui-sans-serif, system-ui, sans-serif;
+  --font-serif: var(--font-garamond), Georgia, serif;
+
+  --radius-btn: 8px;
+  --radius-card: 12px;
+  --shadow-card: 0 6px 24px 0 rgb(29 29 29 / 0.1);
+  --shadow-card-sm: 0 2px 10px 0 rgb(29 29 29 / 0.07);
+}
+
+@layer base {
+  html {
+    -webkit-text-size-adjust: 100%;
+  }
+  body {
+    @apply bg-surface font-sans text-ink antialiased;
+  }
+  h1,
+  h2,
+  h3,
+  h4 {
+    @apply font-display font-semibold tracking-tight text-balance text-ink;
+  }
+  :focus-visible {
+    @apply outline-3 outline-offset-2 outline-brand-600;
+  }
+  ::selection {
+    @apply bg-brand-200 text-ink;
+  }
+  /* Native controls follow the brand color. */
+  input[type="checkbox"],
+  input[type="radio"] {
+    accent-color: var(--color-brand-600);
+  }
+}
+
+/* Form controls. 44px+ tall for easy tapping. */
+@utility field {
+  @apply block min-h-11 w-full rounded-[var(--radius-btn)] border border-ink-300 bg-white px-3.5 py-2.5 text-base text-ink placeholder:text-ink-500 focus:border-brand-600 focus:ring-2 focus:ring-brand-200 focus:outline-none disabled:bg-ink-50 disabled:text-ink-500 aria-[invalid=true]:border-brand-600;
+}
+@utility field-label {
+  @apply mb-1.5 block text-[0.95rem] font-semibold text-ink;
+}
+@utility field-hint {
+  @apply mt-1.5 block text-sm text-ink-500;
+}
+@utility field-error {
+  @apply mt-1.5 block text-sm font-semibold text-brand-700;
+}
+
+@utility card {
+  @apply rounded-[var(--radius-card)] border border-line bg-white shadow-[var(--shadow-card-sm)];
+}
+
+/* The pink brush stroke under one word of a heading, as on sccsc.org ("Serving Sacramento's..."). */
+@utility brush {
+  background-image: linear-gradient(
+    100deg,
+    transparent 0.2em,
+    color-mix(in srgb, var(--color-brand-200) 90%, transparent) 0.35em,
+    var(--color-brand-200) calc(100% - 0.4em),
+    transparent calc(100% - 0.2em)
+  );
+  background-repeat: no-repeat;
+  background-size: 100% 0.32em;
+  background-position: 0 88%;
+  padding-inline: 0.06em;
+  -webkit-box-decoration-break: clone;
+  box-decoration-break: clone;
+}
+
+@media print {
+  @page {
+    margin: 14mm;
+  }
+  body {
+    background: white;
+  }
+  .no-print {
+    display: none !important;
+  }
+}

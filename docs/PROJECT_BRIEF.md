@@ -1,0 +1,185 @@
+# Project Brief: SCCSC Staff App
+
+Working name. First module: Mileage Tracker.
+
+## 1. Background
+
+The Sacramento Chinese Community Service Center (SCCSC) reimburses staff for business mileage.
+The current process is manual and paper based:
+
+1. The employee fills out a mileage spreadsheet template.
+2. Their coordinator reviews and approves it.
+3. The filled spreadsheet is printed and handed to the finance team.
+4. Finance re-types the information into the organization's financial system.
+
+Reimbursements happen roughly every week or two. There is no hard submission deadline, which is fine.
+
+### Problems with the current process
+
+- The same information is handled four times, and two of those steps only move paper.
+- Re-typing creates typos and math errors.
+- Employees can't easily see whether their mileage was approved or paid.
+- Everyone looks up distances and calculates totals themselves, not always consistently.
+
+## 2. Vision
+
+One internal app, usable as a website or an installed phone app with the same features, that:
+
+- Starts as a mileage reimbursement tracker.
+- Grows into a staff hub: other reimbursement types first, then other staff features.
+- Is built in-house (not a purchased SaaS tool) so it fits SCCSC's programs, approval chain, and
+  pay cycles, and can be changed without waiting on a vendor.
+- Does not use continuous GPS tracking of staff.
+
+## 3. Users and roles
+
+| Role | What they do |
+|---|---|
+| Employee | Logs trips, submits claims, tracks status |
+| Coordinator | Reviews and approves, returns, or denies their team's claims |
+| Finance | Batches approved claims, exports to the financial system, marks paid, runs reports |
+| Admin | Manages users, roles, coordinator assignments, rates, programs, and settings |
+
+A person can hold more than one role (for example, a coordinator is also an employee).
+
+## 4. Phase 1: Mileage Tracker (MVP)
+
+### Employee
+
+- Log trips from a phone right after driving, or in bulk later from a desktop.
+- Trip fields: date, start location, end location, optional extra stops, round trip toggle,
+  business purpose, program or grant code, notes.
+- Miles calculated automatically from the addresses. Allow a manual override with a required reason.
+- Saved places (main office, frequent sites) for fast entry.
+- Group trips into a claim and submit it (mirrors the current spreadsheet, which covers
+  multiple trips). **Confirmed 2026-09-29: "bundle when ready."** Trips are logged any time;
+  "Submit" bundles the unsubmitted ones into one claim, and any can be left out for later.
+- See each claim's status: draft, submitted, returned, approved, denied, batched, paid.
+- Get notified when a claim is approved, returned, or paid.
+
+### Coordinator
+
+- Queue of claims waiting for their review.
+- Approve, return with a comment, or deny. Bulk approve for simple cases.
+- Each decision is logged with name and timestamp. This replaces the wet signature.
+
+### Finance
+
+- Queue of approved claims.
+- Create a batch for a pay period, export it in the format the financial system imports,
+  and mark the batch paid.
+- Reports by employee, program or grant code, and date range.
+- Printable summary of a claim or batch, for audits and the transition period.
+
+### Admin
+
+- Manage staff accounts, roles, and which coordinator approves each employee.
+- Manage program and grant codes.
+- Manage the mileage rate as effective-dated values (the IRS rate changes periodically).
+- Settings for business rules that are still open (see section 8).
+
+### Records
+
+- Every claim must capture what the IRS expects under an accountable plan: date, destination,
+  business purpose, and miles.
+- Full audit trail of every status change.
+- Approved records are locked. Changes require returning the claim to the employee.
+
+### Sign-in (confirmed 2026-09-29)
+
+Staff sign in with their **phone number and a text message code** (no passwords, no work email
+needed):
+
+1. Admin imports a staff roster (full name and phone number, from payroll). When someone signs in
+   and their full name and phone match a roster entry, they are in as soon as they enter the code.
+2. Anyone who doesn't match verifies their phone, then waits in an **access request** queue. The
+   admin checks their name against their phone number in Paychex and approves (setting their roles
+   and coordinator) or rejects, usually within a day or two.
+
+Staff stay signed in on their device for a set time (a setting, 30 days to start) so they rarely
+need a new code.
+
+## 5. Future phases (ideas, not committed)
+
+- Other reimbursement types, each defined as a new request type: receipts upload, categories,
+  and per-type approval rules.
+- Staff features such as a forms library, announcements, or a staff directory. Scope to be decided
+  with Eden and SCCSC leadership.
+- A config-driven form builder for admins, only once several request types exist and the
+  patterns are clear.
+- App store versions, only if the PWA is not enough.
+
+## 6. Technical direction (proposed, confirm during planning)
+
+- Next.js (App Router), TypeScript, Tailwind CSS.
+- Supabase for Postgres, Auth, Storage, and Row Level Security. Separate dev and production projects.
+- Vercel hosting.
+- **Website first** (decided 2026-09-29). Then the PWA: web manifest, icons from `assets/brand/`,
+  offline-friendly trip drafting if reasonable.
+- Email notifications through a transactional email provider.
+- Distance calculation and address autocomplete through a maps API. Compare providers on cost
+  and accuracy, cache results, and keep API keys server-side.
+- Sign-in: phone number + text code with roster matching (see "Sign-in" in section 4). Supabase
+  Auth supports phone codes through an SMS provider (Twilio, MessageBird or Vonage), which costs
+  a little per text.
+
+### Suggested data model direction
+
+- `profiles` (user, name, roles, assigned coordinator, active)
+- `request_types` (mileage first; later others)
+- `requests` / claims (type, owner, status, period, totals)
+- `request_items` / trips (belongs to a request; mileage-specific fields or a typed JSON payload)
+- `approvals` and `audit_log` (actor, action, comment, timestamp)
+- `rates` (type, value, effective_from)
+- `programs` (grant or program codes)
+- `batches` (pay period, status, export file, paid date)
+- `saved_places`
+
+This is a starting point for discussion, not a final schema.
+
+## 7. Non-functional requirements
+
+- Mobile first. Works well on older phones and slow connections.
+- Accessible (WCAG 2.1 AA): real buttons and labels, good contrast, large touch targets.
+- Simple language in the UI. Staff have a wide range of tech comfort.
+- Privacy: trip addresses may include home addresses. Limit who can see them.
+- Row Level Security on every table.
+- Fake data only in development and demos.
+
+## 8. Open questions (do not guess; ask Eden or make configurable)
+
+1. Which financial system does finance use, and what import format does it accept?
+2. Will finance and the auditor accept timestamped electronic approvals in place of signatures?
+   Do any funders have specific documentation rules?
+3. How should trips that start from home be handled (commute miles are generally not reimbursable)?
+4. Exact reimbursement cadence and any cutoff for a given pay period.
+5. How coordinator assignments work (by employee, by department, delegation when someone is out).
+6. ~~Does SCCSC use Google Workspace for staff accounts?~~ **Decided:** phone number + text code,
+   with roster matching and admin approval (see section 4).
+7. Does the app need languages besides English?
+8. How long must records be kept?
+9. Does IT or leadership need to approve hosting staff data on Supabase and Vercel?
+10. ~~Is one claim per pay period right, or should each trip be submitted on its own?~~
+    **Decided:** bundle when ready (see section 4).
+11. New: which payroll export will the roster come from (Paychex report columns), and should the
+    roster store work or personal mobile numbers?
+12. New: which SMS provider for sign-in codes, and is the per-text cost approved?
+
+## 9. Rollout plan
+
+1. Build and test with finance using fake data.
+2. Pilot with one program for a pay cycle or two, keeping paper as a backup.
+3. Short walkthrough for coordinators, then everyone switches and the paper forms retire.
+
+## 10. Brand
+
+- Colors: SCCSC red `#D0112B`, charcoal `#333333`, white, light red tint `#F3C4CB`. From the
+  live sccsc.org theme: text `#1D1D1D`, hover red `#A50E22`, muted `#6B6B6B`, section gray.
+- Type (updated 2026-09-29 to match sccsc.org): Onest for headings, Instrument Sans for UI text.
+  EB Garamond only for the wordmark (a stand-in for the logo serif).
+- Logo: the 心 mark in a red square, traced to vector from the SCCSC logo, in `assets/brand/`:
+  - `xin-mark-square.svg`: red square with white 心 (matches the official logo)
+  - `xin-mark-rounded.svg`: rounded corners, for app icons and the PWA manifest
+  - `xin-glyph-white.svg`: the white 心 alone, for placing on red backgrounds
+- Wordmark style: lowercase, small charcoal "mileage" next to a larger red "tracker",
+  echoing the "thecenter" logo.
