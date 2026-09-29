@@ -91,16 +91,6 @@ export default async function ClaimPage({ params, searchParams }: PageProps<"/cl
 
       <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_22rem]">
         <div className="space-y-8">
-          {claim.can.review || claim.can.returnApproved ? (
-            <ReviewPanel
-              requestId={claim.id}
-              ownerName={claim.owner.fullName}
-              totalCents={claim.totalCents}
-              mode={claim.can.review ? "review" : "return-approved"}
-              flagged={claim.trips.some((t) => t.involvesHome || t.overrideReason)}
-            />
-          ) : null}
-
           <section aria-labelledby="trips">
             <h2 id="trips" className="text-2xl">
               Trips
@@ -130,6 +120,16 @@ export default async function ClaimPage({ params, searchParams }: PageProps<"/cl
             </ul>
             {claim.trips.length === 0 ? <p className="mt-3 text-ink-500">This claim has no trips.</p> : null}
           </section>
+
+          {claim.can.review || claim.can.returnApproved ? (
+            <ReviewPanel
+              requestId={claim.id}
+              ownerName={claim.owner.fullName}
+              totalCents={claim.totalCents}
+              mode={claim.can.review ? "review" : "return-approved"}
+              flagged={claim.trips.some((t) => t.involvesHome || t.overrideReason)}
+            />
+          ) : null}
 
           {claim.can.resubmit ? (
             <section aria-labelledby="resubmit" className="border-t border-ink-100 pt-8">

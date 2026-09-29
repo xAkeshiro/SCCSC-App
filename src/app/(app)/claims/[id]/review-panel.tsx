@@ -56,6 +56,8 @@ export function ReviewPanel({
       ) : null}
       <form onSubmit={onSubmit} className="mt-5 space-y-5" noValidate>
         {state.error ? <Notice tone="error">{state.error}</Notice> : null}
+        {/* After deciding, go back to the queue for the next claim. */}
+        {mode === "review" ? <input type="hidden" name="next" value="queue" /> : null}
         {choices.length > 1 ? (
           <fieldset>
             <legend className="sr-only">Decision</legend>
