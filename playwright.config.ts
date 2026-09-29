@@ -14,7 +14,8 @@ export default defineConfig({
   },
   projects: [
     { name: "desktop", use: { ...devices["Desktop Chrome"] } },
-    { name: "phone", use: { ...devices["Pixel 7"] } },
+    // Phone runs the tests tagged @phone (the everyday employee flows).
+    { name: "phone", use: { ...devices["Pixel 7"] }, grep: /@phone/ },
   ],
   webServer: {
     // Fresh in-memory demo database for every run.

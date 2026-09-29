@@ -126,8 +126,8 @@ replace it, with results cached.
 | | Milestone | Status |
 |---|---|---|
 | M0 | Foundation: docs, scaffold, design system, database + RLS, seed, tests | done |
-| M1 | Sign-in with phone + code, roster match, access requests, demo people | in progress |
-| M2 | Log, edit and delete trips; saved places; miles and amount | planned |
+| M1 | Sign-in with phone + code, roster match, access requests, demo people | done |
+| M2 | Log, edit and delete trips; saved places; miles and amount | in progress |
 | M3 | Submit claims, claim history, return and resubmit, updates, printable claim | planned |
 | M4 | Coordinator review: approve, return, deny, bulk approve | planned |
 | M5 | Finance: batches, CSV export, mark paid, printable batch, simple report | planned |
