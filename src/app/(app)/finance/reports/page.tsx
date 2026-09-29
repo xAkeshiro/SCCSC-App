@@ -1,14 +1,13 @@
-import { Download } from "lucide-react";
 import type { Metadata } from "next";
-import Link from "next/link";
 import { StatusBadge } from "@/components/status-badge";
-import { Button, Card, Container, PageHeader, Stat, buttonClass } from "@/components/ui";
+import { Button, Card, Container, PageHeader, Stat } from "@/components/ui";
 import { hasRole, requireRole } from "@/lib/auth/viewer";
 import { REPORT_STATUSES, mileageReport } from "@/lib/data/finance";
 import { formatDay, plural } from "@/lib/format";
 import { formatCents, formatMiles } from "@/lib/money";
 import { parseReportFilters, reportQuery } from "@/lib/requests/report-filters";
 import { STATUS_LABEL, claimNumber } from "@/lib/requests/status";
+import { ReportDownloadButton } from "./download-button";
 
 export const metadata: Metadata = { title: "Reports" };
 
@@ -83,9 +82,7 @@ export default async function ReportsPage({ searchParams }: PageProps<"/finance/
       </Card>
 
       <div className="mt-6 flex justify-end">
-        <Link href={`/finance/reports/export?${reportQuery(filters)}`} className={buttonClass("secondary")} prefetch={false}>
-          <Download aria-hidden className="size-4" /> Download trips (CSV)
-        </Link>
+        <ReportDownloadButton query={reportQuery(filters)} />
       </div>
 
       <div className="mt-4 grid grid-cols-1 gap-6 lg:grid-cols-2">

@@ -3,8 +3,12 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { requireRole } from "@/lib/auth/viewer";
-import { addToBatch, createBatch, markBatchPaid, removeFromBatch } from "@/lib/data/finance";
+import { dollars, toCsv } from "@/lib/csv";
+import { addToBatch, batchDetail, createBatch, markBatchExported, markBatchPaid, mileageReport, removeFromBatch } from "@/lib/data/finance";
 import { errorMessage } from "@/lib/errors";
+import { batchCsv } from "@/lib/requests/export";
+import { parseReportFilters } from "@/lib/requests/report-filters";
+import { STATUS_LABEL, batchNumber, claimNumber } from "@/lib/requests/status";
 
 export type FinanceState = { error?: string };
 
@@ -56,4 +60,54 @@ export async function markPaid(batchId: string, _prev: FinanceState, formData: F
   }
   revalidatePath("/", "layout");
   redirect(`/finance/batches/${batchId}?done=paid`);
+}
+
+export type CsvFile = { ok: true; filename: string; csv: string } | { ok: false; error: string };
+
+/**
+ * The batch file for the financial system. Recording the export freezes the batch.
+ * A server action (not a route handler) so that, in the demo, it runs next to the pages and
+ * sees the same in-memory database.
+ */
+export async function exportBatchFile(batchId: string, format: "detail" | "summary"): Promise<CsvFile> {
+  const viewer = await requireRole("finance", "admin");
+  const batch = await batchDetail(viewer, batchId);
+  if (!batch) return { ok: false, error: "Batch not found." };
+  if (batch.claims.length === 0) return { ok: false, error: "This batch has no claims to export." };
+  try {
+    await markBatchExported(viewer, batchId);
+  } catch (err) {
+    return { ok: false, error: errorMessage(err) };
+  }
+  revalidatePath("/finance", "layout");
+  const layout = format === "summary" ? "summary" : "detail";
+  return { ok: true, filename: `${batchNumber(batch.ref)}-${layout}.csv`, csv: batchCsv(batch, layout) };
+}
+
+/** The mileage report's trips as a CSV, for the filters in `query` (the report page's URL query). */
+export async function exportReportFile(query: string): Promise<CsvFile> {
+  const viewer = await requireRole("finance", "admin");
+  const search = new URLSearchParams(query.slice(0, 2000));
+  const params: Record<string, string | string[]> = {};
+  for (const key of new Set(search.keys())) {
+    const all = search.getAll(key);
+    params[key] = all.length > 1 ? all : all[0];
+  }
+  const filters = parseReportFilters(params);
+  const report = await mileageReport(viewer, filters);
+  const csv = toCsv(
+    ["Trip date", "Employee", "Business purpose", "Route", "Program code", "Claim", "Claim status", "Miles", "Amount"],
+    report.trips.map((t) => [
+      t.date,
+      t.ownerName,
+      t.purpose,
+      t.route,
+      t.programCode ?? "",
+      claimNumber(t.claimRef),
+      STATUS_LABEL[t.claimStatus],
+      t.miles.toFixed(1),
+      dollars(t.amountCents),
+    ]),
+  );
+  return { ok: true, filename: `mileage-${filters.from}-to-${filters.to}.csv`, csv };
 }

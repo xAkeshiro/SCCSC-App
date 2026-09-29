@@ -171,7 +171,7 @@ export default async function BatchPage({ params, searchParams }: PageProps<"/fi
                 ? `Downloaded ${formatDateTime(batch.exportedAt)}${batch.exportedBy ? ` by ${batch.exportedBy}` : ""}. You can download it again.`
                 : "Downloading freezes the batch, so no claims can be added or removed afterwards."}
             </p>
-            {batch.claims.length > 0 ? <ExportButtons batchId={batch.id} batchName={name} /> : null}
+            {batch.claims.length > 0 ? <ExportButtons batchId={batch.id} /> : null}
             <p className="text-xs text-ink-500">
               These are general spreadsheet layouts until we know the financial system&apos;s import format.
             </p>

@@ -5,10 +5,11 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { Button, Field, Notice } from "@/components/ui";
 import { useFormAction } from "@/components/use-form-action";
-import { markPaid, type FinanceState } from "../../actions";
+import { saveCsv } from "@/components/download";
+import { exportBatchFile, markPaid, type FinanceState } from "../../actions";
 
 /** Downloads the batch file, then refreshes the page to show it was exported. */
-export function ExportButtons({ batchId, batchName }: { batchId: string; batchName: string }) {
+export function ExportButtons({ batchId }: { batchId: string }) {
   const router = useRouter();
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -17,18 +18,9 @@ export function ExportButtons({ batchId, batchName }: { batchId: string; batchNa
     setBusy(format);
     setError(null);
     try {
-      const body = new FormData();
-      body.set("format", format);
-      const res = await fetch(`/finance/batches/${batchId}/export`, { method: "POST", body });
-      if (!res.ok) throw new Error((await res.text()) || "The file couldn't be made. Please try again.");
-      const url = URL.createObjectURL(await res.blob());
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = `${batchName}-${format}.csv`;
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
-      URL.revokeObjectURL(url);
+      const file = await exportBatchFile(batchId, format);
+      if (!file.ok) throw new Error(file.error);
+      saveCsv(file.filename, file.csv);
       router.refresh();
     } catch (err) {
       setError(err instanceof Error ? err.message : "The file couldn't be made. Please try again.");

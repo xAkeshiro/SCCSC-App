@@ -241,3 +241,19 @@ describe("tampering", () => {
     expect(r.map((x) => x.role)).toEqual(["employee", "coordinator"]);
   });
 });
+
+describe("the demo seed", () => {
+  it("uses the same ids every time, so demo links work on any server instance", async () => {
+    const other = await createTestDb();
+    try {
+      const q = sql`select id, ref from public.requests order by ref`;
+      const a = await rows<{ id: string; ref: number }>(t.db, q);
+      const b = await rows<{ id: string; ref: number }>(other.db, q);
+      // Compare only the seeded claims (tests above add more).
+      expect(a.slice(0, b.length)).toEqual(b);
+      expect(b.every((r) => r.id.startsWith("00000000-0000-4000-a000-"))).toBe(true);
+    } finally {
+      await other.close();
+    }
+  });
+});

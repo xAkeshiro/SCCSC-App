@@ -12,7 +12,6 @@ export const metadata: Metadata = {
     template: "%s | Mileage tracker",
   },
   description: "Log business trips, submit mileage claims and track reimbursement. For Sacramento Chinese Community Service Center staff.",
-  icons: { icon: "/brand/xin-mark-rounded.svg" },
   robots: { index: false, follow: false },
 };
 

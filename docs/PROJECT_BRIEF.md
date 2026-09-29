@@ -188,5 +188,8 @@ This is a starting point for discussion, not a final schema.
   - `xin-mark-square.svg`: red square with white 心 (matches the official logo)
   - `xin-mark-rounded.svg`: rounded corners, for app icons and the PWA manifest
   - `xin-glyph-white.svg`: the white 心 alone, for placing on red backgrounds
+  - `app-icon.png`: the app icon (心 mark with a location pin badge), used for the browser tab and
+    phone home screen (`src/app/icon.png`, `src/app/apple-icon.png`, and `public/brand/app-icon-*.png`
+    for the installable app later)
 - Wordmark style: lowercase, small charcoal "mileage" next to a larger red "tracker",
   echoing the "thecenter" logo.

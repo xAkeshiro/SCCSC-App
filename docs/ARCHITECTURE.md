@@ -33,6 +33,10 @@ Postgres
 | Production (later) | `DATABASE_URL` set | Supabase Postgres | text message (Supabase Auth) |
 
 Local dev and the demo seed fake data on first start and show a "Demo, fake data only" banner.
+On Vercel each server instance keeps its own in-memory copy, so changes made in the demo reset
+when an instance restarts. Seeded records have fixed ids so links to them work on any instance,
+and everything that changes data runs as a page or server action (not a separate route handler),
+so it lands on the same instance as the pages.
 The demo also lists the demo people on the sign-in page so the director can click through every
 role.
 

@@ -119,7 +119,19 @@ export async function seedIfEmpty(db: Database) {
   return true;
 }
 
+/**
+ * Fixed ids for everything the seed creates, in creation order. On Vercel the demo database lives
+ * in memory and each server instance seeds its own copy; fixed ids mean a link to a demo claim or
+ * batch works whichever instance answers.
+ */
+function idSequence() {
+  let n = 0;
+  return () => `00000000-0000-4000-a000-${(++n).toString(16).padStart(12, "0")}`;
+}
+
 async function seed(tx: Tx) {
+  const nextId = idSequence();
+
   // Reference data -----------------------------------------------------------------------------
   await tx.insert(s.requestTypes).values({
     id: "mileage",
@@ -127,12 +139,15 @@ async function seed(tx: Tx) {
     description: "Business miles driven in a personal vehicle.",
     config: { unit: "mile" },
   });
-  const programRows = await tx.insert(s.programs).values(PROGRAMS).returning();
+  const programRows = await tx
+    .insert(s.programs)
+    .values(PROGRAMS.map((p) => ({ ...p, id: nextId() })))
+    .returning();
   const programId = (code: string) => programRows.find((p) => p.code === code)!.id;
 
   const rateRows = await tx
     .insert(s.rates)
-    .values(RATES.map((r) => ({ ...r, requestType: "mileage" })))
+    .values(RATES.map((r) => ({ ...r, id: nextId(), requestType: "mileage" })))
     .returning();
   const rateFor = (date: string) =>
     [...rateRows].sort((a, b) => b.effectiveFrom.localeCompare(a.effectiveFrom)).find((r) => r.effectiveFrom <= date)!;
@@ -167,6 +182,7 @@ async function seed(tx: Tx) {
       .where(sql`${s.staff.id} = ${DEMO[p.key].staffId}`);
   }
   await tx.insert(s.accessRequests).values({
+    id: nextId(),
     userId: DEMO.nora.userId,
     fullName: "Nora Pennington",
     phoneE164: "+19165550109",
@@ -176,7 +192,7 @@ async function seed(tx: Tx) {
   // Places -------------------------------------------------------------------------------------
   const placeRows = await tx
     .insert(s.savedPlaces)
-    .values(PLACES.map(({ label, address, lat, lng }) => ({ label, address, lat, lng })))
+    .values(PLACES.map(({ label, address, lat, lng }) => ({ id: nextId(), label, address, lat, lng })))
     .returning();
   const place = (key: Exclude<PlaceKey, "home">) => {
     const def = PLACES.find((p) => p.key === key)!;
@@ -186,7 +202,7 @@ async function seed(tx: Tx) {
   for (const [key, home] of Object.entries(HOMES) as [PersonKey, (typeof HOMES)[PersonKey]][]) {
     const [row] = await tx
       .insert(s.savedPlaces)
-      .values({ ownerId: DEMO[key].staffId, label: "Home", isHome: true, ...home! })
+      .values({ id: nextId(), ownerId: DEMO[key].staffId, label: "Home", isHome: true, ...home! })
       .returning();
     homes[key] = row;
   }
@@ -216,6 +232,7 @@ async function seed(tx: Tx) {
     const [item] = await tx
       .insert(s.requestItems)
       .values({
+        id: nextId(),
         requestType: "mileage",
         ownerId: DEMO[t.owner].staffId!,
         requestId,
@@ -264,6 +281,7 @@ async function seed(tx: Tx) {
     const [req] = await tx
       .insert(s.requests)
       .values({
+        id: nextId(),
         requestType: "mileage",
         ownerId: DEMO[owner].staffId!,
         status: last.to,
@@ -436,6 +454,7 @@ async function seed(tx: Tx) {
   const [paidBatch] = await tx
     .insert(s.batches)
     .values({
+      id: nextId(),
       periodStart: isoDaysAgo(45),
       periodEnd: isoDaysAgo(32),
       status: "paid",
@@ -450,6 +469,7 @@ async function seed(tx: Tx) {
   const [openBatch] = await tx
     .insert(s.batches)
     .values({
+      id: nextId(),
       periodStart: isoDaysAgo(17),
       periodEnd: isoDaysAgo(4),
       status: "open",

@@ -51,7 +51,7 @@ test("reports total trips by employee and program, and download as CSV", async (
   await page.goto("/finance/reports");
   await expect(page.getByRole("region", { name: "By program or grant" })).toContainText("EXL");
   const downloadPromise = page.waitForEvent("download");
-  await page.getByRole("link", { name: "Download trips (CSV)" }).click();
+  await page.getByRole("button", { name: "Download trips (CSV)" }).click();
   const csv = readFileSync(await (await downloadPromise).path(), "utf8");
   expect(csv).toContain("Trip date,Employee,Business purpose");
 });

@@ -21,13 +21,3 @@ export function toCsv(header: string[], rows: Cell[][]): string {
 export function dollars(cents: number): string {
   return (cents / 100).toFixed(2);
 }
-
-export function csvResponse(filename: string, csv: string) {
-  return new Response(`﻿${csv}`, {
-    headers: {
-      "Content-Type": "text/csv; charset=utf-8",
-      "Content-Disposition": `attachment; filename="${filename}"`,
-      "Cache-Control": "no-store",
-    },
-  });
-}
