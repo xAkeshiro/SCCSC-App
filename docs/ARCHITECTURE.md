@@ -130,7 +130,7 @@ replace it, with results cached.
 | M2 | Log, edit and delete trips; saved places; miles and amount | done |
 | M3 | Submit claims, claim history, return and resubmit, updates, printable claim | done |
 | M4 | Coordinator review: approve, return, deny, bulk approve | done |
-| M5 | Finance: batches, CSV export, mark paid, printable batch, simple report | in progress |
+| M5 | Finance: batches, CSV export, mark paid, printable batch, simple report | done |
 | M6 | Admin: roster import, roles and coordinators, rates, programs, settings, audit view | later |
 | M7 | Supabase + real text messages, then deploy to Vercel | later |
 | M8 | Maps provider and notifications | later |
