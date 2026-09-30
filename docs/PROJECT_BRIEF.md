@@ -277,4 +277,6 @@ This is a starting point for discussion, not a final schema.
 - Opening animation (added 2026-09-30): the full logo on white. The red seal stamps in, 心 is written
   stroke by stroke, "thecenter" and the name follow, and it fades into the app, in about 3 seconds.
   It plays once when the app is opened in a browser tab, a tap skips it, and it never plays for
-  people whose device is set to reduce motion (`src/components/intro/`).
+  people whose device is set to reduce motion (`src/components/intro/`). The "sacramento chinese /
+  community service center" lines are set in Instrument Sans (the app's text font) so they're easy
+  to read, in the logo's two-line layout; the logo file itself keeps the original lettering.

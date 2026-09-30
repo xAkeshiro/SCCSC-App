@@ -101,6 +101,11 @@ mask:nth-of-type(4) .brush {
 }
 
 .name {
+  font-family: var(--font-instrument), ui-sans-serif, system-ui, sans-serif;
+  font-size: 40px;
+  font-weight: 500;
+  letter-spacing: 0.01em;
+  fill: #333;
   animation: fade-up 0.55s ease-out calc(1.5s + var(--i) * 0.12s) both;
 }
 

@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useSyncExternalStore, type CSSProperties } from "react";
 import styles from "./intro.module.css";
-import { CENTER, SUBTITLE, THE, XIN_STROKES } from "./logo-paths";
+import { CENTER, THE, XIN_STROKES } from "./logo-paths";
 import { SEEN_KEY } from "./script";
 
 /**
@@ -73,15 +73,18 @@ export function Intro() {
             <path key={i} d={d} className={styles.center} style={order(i)} />
           ))}
         </g>
-        <g fill="#333" fillRule="evenodd">
-          {SUBTITLE.map((d, i) => (
-            <path key={i} d={d} className={styles.name} style={order(i)} />
-          ))}
-        </g>
+        {/* The organization's name as text (the app's Instrument Sans), in the logo's two lines. */}
+        {NAME_LINES.map((line, i) => (
+          <text key={line} x="223" y={190 + i * 52} className={styles.name} style={order(i)}>
+            {line}
+          </text>
+        ))}
       </svg>
     </div>
   );
 }
+
+const NAME_LINES = ["sacramento chinese", "community service center"];
 
 const listeners = new Set<() => void>();
 
