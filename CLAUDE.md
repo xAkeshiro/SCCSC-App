@@ -1,7 +1,7 @@
 # SCCSC Staff App
 
 Internal staff app for the Sacramento Chinese Community Service Center (SCCSC).
-It starts as a **mileage reimbursement tracker** and will grow into a staff hub with
+It starts as a **reimbursement tracker** (mileage and phone bills) and will grow into a staff hub with
 other reimbursement types and staff features over time.
 
 Owner and solo developer: Eden Redona (Administrative Assistant, SCCSC).
@@ -11,7 +11,8 @@ Architecture, data model, security model and milestones: @docs/ARCHITECTURE.md
 
 ## Current status
 
-- Working prototype of the mileage tracker (website; the installable app/PWA comes later).
+- Working prototype of the reimbursement tracker: mileage, and phone bills ($45 a month, claimed
+  every two months). Website; the installable app/PWA comes later.
 - Runs on a built-in database (PGlite) with **fake data only** until the director and finance
   sign off. Supabase, real sign-in emails and a maps provider come after that.
 - Several business rules are still unconfirmed (see "Open questions" in the brief). Do not guess
@@ -59,8 +60,8 @@ Architecture, data model, security model and milestones: @docs/ARCHITECTURE.md
 ## Architecture principles
 
 - **Generic request engine, specific first module.** Model everything as a "request" of a
-  "request type" (mileage first, other reimbursements later). Mileage specifics live in its
-  request type, not hard-coded across the app. Do NOT build a drag-and-drop form builder in
+  "request type" (mileage and phone bills so far, other reimbursements later). Each type's
+  specifics live in its request type (`src/lib/requests/`), not hard-coded across the app. Do NOT build a drag-and-drop form builder in
   phase 1; define request types in code or config.
 - **Roles:** employee, coordinator (approver), finance, admin. One person can hold several.
 - **Status flow:** draft → submitted → approved / returned / denied → batched → paid.
@@ -76,7 +77,9 @@ Architecture, data model, security model and milestones: @docs/ARCHITECTURE.md
 ## Rules
 
 - Never commit secrets. Use `.env.local` and keep `.env.example` updated.
-- Seed and test data must be fake. Never use real employee names, addresses, or amounts.
+- Seed and test data must be fake. Never use real employee names, addresses, or amounts. The one
+  exception is Eden's own demo roster entry (Eden Redona, eden.redona@sccsc.org), added at Eden's
+  request so Eden can sign in to the demo with a real emailed code.
 - Database changes go through migrations, never manual edits in the dashboard.
 - App code reads and writes as the signed-in user through `withUser` (`src/db/with-user.ts`) so
   RLS applies. `withSystem` bypasses RLS and is only for the sign-in flow and seeding.
@@ -90,7 +93,7 @@ The look follows the live sccsc.org landing page (see `src/app/globals.css` for 
 - Red `#D0112B` (hover `#A50E22`), text `#1D1D1D`, charcoal `#333333`, muted `#6B6B6B`, white,
   light gray sections `#F7F7F7`. Light red tint `#F3C4CB` for accents and the brush underline.
 - Fonts: Onest for headings, Instrument Sans for text (both from sccsc.org). EB Garamond only for
-  the lowercase "mileage tracker" wordmark (stand-in for the logo serif).
+  the lowercase "reimbursement tracker" wordmark (stand-in for the logo serif).
 - Details from sccsc.org: red-heart eyebrows above headings, a pink brush stroke under one word
   of a heading, big red stat numbers, white cards with soft shadows, 8px button corners, dark
   top bar and footer.

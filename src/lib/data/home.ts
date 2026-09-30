@@ -4,17 +4,19 @@ import { sql } from "drizzle-orm";
 import { rows, withUser } from "@/db/with-user";
 import { hasRole, type Viewer } from "@/lib/auth/viewer";
 import type { RequestAction, RequestStatus } from "@/lib/requests/status";
+import { asRequestType, type RequestType } from "@/lib/requests/types";
 
 export type HomeSummary = {
   unclaimed: { count: number; cents: number };
   waiting: { count: number; cents: number };
   approved: { count: number; cents: number };
   paidThisYear: { count: number; cents: number };
-  needsAction: { id: string; ref: number; status: RequestStatus; totalCents: number; comment: string | null; by: string | null }[];
+  needsAction: { id: string; ref: number; type: RequestType; status: RequestStatus; totalCents: number; comment: string | null; by: string | null }[];
   updates: {
     id: number;
     requestId: string;
     ref: number;
+    type: RequestType;
     action: RequestAction;
     actorName: string;
     comment: string | null;
@@ -54,9 +56,17 @@ export async function homeSummary(viewer: Viewer): Promise<HomeSummary> {
       where r.owner_id = ${me}::uuid`,
     );
 
-    const needsAction = await rows<{ id: string; ref: number; status: RequestStatus; total_cents: number; comment: string | null; by: string | null }>(
+    const needsAction = await rows<{
+      id: string;
+      ref: number;
+      request_type: string;
+      status: RequestStatus;
+      total_cents: number;
+      comment: string | null;
+      by: string | null;
+    }>(
       tx,
-      sql`select r.id, r.ref::int as ref, r.status, r.total_cents, e.comment, e.actor_name as by
+      sql`select r.id, r.ref::int as ref, r.request_type, r.status, r.total_cents, e.comment, e.actor_name as by
           from public.requests r
           left join lateral (
             select comment, actor_name from public.request_events
@@ -70,6 +80,7 @@ export async function homeSummary(viewer: Viewer): Promise<HomeSummary> {
       id: number;
       request_id: string;
       ref: number;
+      request_type: string;
       action: RequestAction;
       actor_name: string;
       comment: string | null;
@@ -77,7 +88,7 @@ export async function homeSummary(viewer: Viewer): Promise<HomeSummary> {
       is_new: boolean;
     }>(
       tx,
-      sql`select e.id::int as id, e.request_id, r.ref::int as ref, e.action, e.actor_name, e.comment, e.created_at,
+      sql`select e.id::int as id, e.request_id, r.ref::int as ref, r.request_type, e.action, e.actor_name, e.comment, e.created_at,
                  e.created_at > coalesce((select updates_seen_at from public.staff_state where staff_id = ${me}::uuid), 'epoch') as is_new
           from public.request_events e
           join public.requests r on r.id = e.request_id
@@ -103,6 +114,7 @@ export async function homeSummary(viewer: Viewer): Promise<HomeSummary> {
       needsAction: needsAction.map((r) => ({
         id: r.id,
         ref: r.ref,
+        type: asRequestType(r.request_type),
         status: r.status,
         totalCents: r.total_cents,
         comment: r.comment,
@@ -112,6 +124,7 @@ export async function homeSummary(viewer: Viewer): Promise<HomeSummary> {
         id: u.id,
         requestId: u.request_id,
         ref: u.ref,
+        type: asRequestType(u.request_type),
         action: u.action,
         actorName: u.actor_name,
         comment: u.comment,

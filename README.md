@@ -1,9 +1,9 @@
-# SCCSC Staff App: mileage tracker
+# SCCSC Staff App: reimbursement tracker
 
 Internal staff app for the Sacramento Chinese Community Service Center. The first module replaces
 the paper mileage spreadsheet: staff log trips from their phone, submit them as a claim, their
-coordinator approves it, and finance batches and pays it. Every step is recorded, and nobody
-re-types anything.
+coordinator approves it, and finance batches and pays it. Phone bills ($45 a month, claimed every
+two months) go through the same steps. Every step is recorded, and nobody re-types anything.
 
 **Status:** working prototype with **fake data only**. See [docs/PROJECT_BRIEF.md](docs/PROJECT_BRIEF.md)
 for the product brief and open questions, [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for how it
@@ -31,13 +31,15 @@ On the sign-in page, pick a made-up person from the **Demo** dropdown and press 
    Rowan's claim: check the trips, then approve, or return it with a comment. Small claims with
    nothing flagged can be ticked and approved together.
 3. **Rowan again.** The home page shows the update. The claim page shows the whole history:
-   who did what, when, and why.
+   who did what, when, and why. The **Phone bill** card says his last two months are ready:
+   press **Claim $90.00**, confirm, and send it. It goes to Lena like a mileage claim.
 4. **Hazel Brightwater (finance).** **Finance** lists approved claims. Create a batch for the pay
    period, download the CSV for the financial system, then mark it paid. **Reports** totals trips
    by employee and program for any dates. Everything has a printable version.
 5. **Sam Whitlock (admin).** **Admin** shows Nora Pennington waiting for access. She verified her
    email but isn't on the staff list. Approve her with a role and a coordinator.
-6. **The real sign-in.** Sign out, then sign in as **Felix Hartwell, felix.hartwell@example.org**.
+6. **The real sign-in.** Sign out, then sign in as **Felix Hartwell, felix.hartwell@example.org**
+   (or as yourself, **Eden Redona, eden.redona@sccsc.org**: you're on the staff list as an admin).
    He's on the staff list but has never signed in. The code appears on screen (no email is sent in
    the demo unless you set it up below). **Use phone number instead** signs in with his mobile,
    (916) 555-0108, to the same account. Any other name and email goes to the admin's approval queue.
@@ -51,8 +53,11 @@ On the sign-in page, pick a made-up person from the **Demo** dropdown and press 
 | Hazel Brightwater | Employee, finance | Owen Castellano |
 | Sam Whitlock | Employee, admin | Owen Castellano |
 | Felix Hartwell | Employee (on the roster, never signed in) | Lena Fairbanks |
+| Eden Redona | Employee, admin (on the roster; sign in with your emailed code) | Owen Castellano |
 
-All names, emails (example.org), phone numbers (555-01xx), addresses and amounts are made up.
+All names, emails (example.org), phone numbers (555-01xx), addresses and amounts are made up,
+except Eden's own entry. Tessa, Marcus, Lena and Rowan also have phone bill claims in different
+states (waiting, approved, returned to fix, paid).
 
 ## Real sign-in codes for the demo
 
@@ -130,7 +135,7 @@ limits. Twilio charges about $0.05 per verification, which the trial credit cove
 src/
   app/
     sign-in/, pending/     email (or phone) + code sign-in, "waiting for approval"
-    (app)/                 signed-in pages: home, trips, claims, review, finance, admin, help
+    (app)/                 signed-in pages: home, trips, claims, phone bill, review, finance, admin, help
     print/                 printable claim and batch
   components/              UI building blocks in the sccsc.org style
   db/
@@ -142,7 +147,7 @@ src/
   lib/
     auth/                  sessions, sign-in codes, roster matching, the signed-in viewer
     data/                  queries and actions per area (claims, trips, review, finance, admin)
-    requests/              request statuses, the mileage request type, CSV export layouts
+    requests/              request types (mileage, phone bill periods), statuses, CSV export layouts
     distance/              miles between places (demo estimate until a maps service is chosen)
 drizzle/                   migrations (0001_security.sql: RLS, audited transitions, locks)
 tests/                     unit and database tests (Vitest)

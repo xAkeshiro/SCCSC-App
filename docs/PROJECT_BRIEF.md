@@ -1,6 +1,6 @@
 # Project Brief: SCCSC Staff App
 
-Working name. First module: Mileage Tracker.
+Working name. First module: Reimbursement Tracker (mileage, then phone bills).
 
 ## 1. Background
 
@@ -25,7 +25,7 @@ Reimbursements happen roughly every week or two. There is no hard submission dea
 
 One internal app, usable as a website or an installed phone app with the same features, that:
 
-- Starts as a mileage reimbursement tracker.
+- Starts as a reimbursement tracker: mileage first, then phone bills.
 - Grows into a staff hub: other reimbursement types first, then other staff features.
 - Is built in-house (not a purchased SaaS tool) so it fits SCCSC's programs, approval chain, and
   pay cycles, and can be changed without waiting on a vendor.
@@ -101,9 +101,24 @@ default because email codes are free, while texts cost money per message and are
 Staff stay signed in on their device for a set time (a setting, 30 days to start) so they rarely
 need a new code.
 
+### Phone bill reimbursement (added 2026-09-30)
+
+The second reimbursement type, built on the same claims, approval, batch and payment flow as
+mileage.
+
+- SCCSC pays **$45 a month** for using a personal phone for work (an effective-dated rate, like the
+  mileage rate).
+- It's claimed **every two months, in the even months** (February, April, June, August, October,
+  December), so a normal claim covers two months: **$90**. The months per claim is a setting.
+- The employee opens **Phone bill**, checks the months (both are ticked; untick one, for example
+  before they started), picks the program, confirms, and sends it. Their coordinator approves it
+  like a mileage claim, and finance pays it in the same batches.
+- Each person can claim a month only once. A returned claim can drop a month and be resubmitted.
+- Missed a period? The one before the latest can still be claimed (a setting).
+
 ## 5. Future phases (ideas, not committed)
 
-- Other reimbursement types, each defined as a new request type: receipts upload, categories,
+- More reimbursement types (phone bills were the second), each defined as a new request type: receipts upload, categories,
   and per-type approval rules.
 - Staff features such as a forms library, announcements, or a staff directory. Scope to be decided
   with Eden and SCCSC leadership.
@@ -177,6 +192,13 @@ This is a starting point for discussion, not a final schema.
 16. New: which claims can be approved in bulk? (A setting: under $100 with nothing flagged.)
 17. New: sending sign-in emails to staff (not just the demo inbox) needs a domain verified with the
     email provider, for example `staff.sccsc.org`. Who manages sccsc.org's DNS?
+18. New (phone bills): is every staff member eligible, or only some roles or programs?
+19. New (phone bills): does finance need a copy of the bill, or is the $45 a flat allowance with no
+    receipt? (Built as a flat allowance, no upload.)
+20. New (phone bills): how late can a missed period be claimed? (A setting: one period back.)
+21. New (phone bills): is the confirmation wording right? ("I confirm I used my own phone for SCCSC
+    work during these months.") And which program should phone bills be charged to? (The
+    employee picks; it starts on their usual program.)
 
 ## 9. Rollout plan
 
@@ -197,5 +219,5 @@ This is a starting point for discussion, not a final schema.
   - `app-icon.png`: the app icon (心 mark with a location pin badge), used for the browser tab and
     phone home screen (`src/app/icon.png`, `src/app/apple-icon.png`, and `public/brand/app-icon-*.png`
     for the installable app later)
-- Wordmark style: lowercase, small charcoal "mileage" next to a larger red "tracker",
+- Wordmark style (renamed 2026-09-30): lowercase, small charcoal "reimbursement" next to a larger red "tracker",
   echoing the "thecenter" logo.

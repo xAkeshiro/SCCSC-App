@@ -26,12 +26,16 @@ const FAQ: { q: string; a: string }[] = [
     a: "Open the claim and read your coordinator's comment. Fix the trips it mentions, then press Resubmit.",
   },
   {
+    q: "How does the phone bill work?",
+    a: "SCCSC pays a set amount each month for using your own phone for work. The Phone bill page shows the amount and which months are ready to claim (every couple of months): check them and send the claim. It goes to your coordinator like a mileage claim, and each month can only be claimed once.",
+  },
+  {
     q: "Who can see my trips?",
     a: "You, your coordinator, and finance once a claim is approved. If a trip starts or ends at a place saved as Home, others see the word Home, not your address.",
   },
   {
     q: "I can't sign in.",
-    a: "Use the mobile number payroll has for you, and your name as it appears on your paycheck. If you're new or your number changed, sign in anyway and an admin will approve you, usually within a day or two.",
+    a: "Use the email payroll has for you (or tap “Use phone number instead” for your mobile number), and your name as it appears on your paycheck. If you're new or your details changed, sign in anyway and an admin will approve you, usually within a day or two.",
   },
 ];
 

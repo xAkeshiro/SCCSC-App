@@ -30,7 +30,7 @@ export function ReportDownloadButton({ query }: { query: string }) {
           }
         }}
       >
-        <Download aria-hidden className="size-4" /> {busy ? "Preparing…" : "Download trips (CSV)"}
+        <Download aria-hidden className="size-4" /> {busy ? "Preparing…" : "Download details (CSV)"}
       </Button>
     </div>
   );

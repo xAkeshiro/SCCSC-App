@@ -260,7 +260,7 @@ export function TripForm({ options, initial, action, submitLabel, cancelHref, al
       </section>
 
       {/* Running total, like the bottom line of the spreadsheet. Stays in view above the phone tab bar. */}
-      <div className="card sticky bottom-[5.5rem] z-10 flex items-center justify-between gap-4 px-4 py-3 shadow-[var(--shadow-card)] md:bottom-4 sm:px-5">
+      <div className="card sticky bottom-[5.5rem] z-10 flex items-center justify-between gap-4 px-4 py-3 shadow-[var(--shadow-card)] lg:bottom-4 sm:px-5">
         <div aria-live="polite" className="min-w-0">
           <p className="truncate text-sm text-ink-500">
             {normalized && Number(normalized) > 0 ? `${normalized} mi` : "Miles"}

@@ -1,12 +1,21 @@
 "use client";
 
-import { Banknote, CarFront, FileText, Home, ListChecks, Menu, Plus, ShieldCheck } from "lucide-react";
+import { Banknote, CarFront, FileText, Home, ListChecks, Menu, Plus, ShieldCheck, Smartphone } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import type { NavItem } from "@/lib/nav";
 import { cx } from "./ui";
 
-const ICONS = { home: Home, trips: CarFront, claims: FileText, review: ListChecks, finance: Banknote, admin: ShieldCheck, more: Menu };
+const ICONS = {
+  home: Home,
+  trips: CarFront,
+  claims: FileText,
+  phone: Smartphone,
+  review: ListChecks,
+  finance: Banknote,
+  admin: ShieldCheck,
+  more: Menu,
+};
 
 function isActive(pathname: string, href: string) {
   return href === "/" ? pathname === "/" : pathname === href || pathname.startsWith(`${href}/`);
@@ -16,7 +25,7 @@ function isActive(pathname: string, href: string) {
 export function HeaderNav({ items, badges }: { items: NavItem[]; badges: Record<string, number> }) {
   const pathname = usePathname();
   return (
-    <nav aria-label="Main" className="hidden items-center gap-1 md:flex">
+    <nav aria-label="Main" className="hidden items-center gap-1 lg:flex">
       {items.map((item) => {
         const active = isActive(pathname, item.href);
         return (
@@ -53,7 +62,8 @@ function Badge({ count, className }: { count: number; className?: string }) {
 }
 
 /**
- * Phone tab bar: Home, Trips, a big "Log trip" button, Claims, and More (the other role areas).
+ * Phone and tablet tab bar: Home, Trips, a big "Log trip" button, Claims, and More (phone bill and the other
+ * role areas).
  * People who don't log trips get their role areas directly.
  */
 export function BottomNav({ items, badges, canLogTrips }: { items: NavItem[]; badges: Record<string, number>; canLogTrips: boolean }) {
@@ -87,7 +97,7 @@ export function BottomNav({ items, badges, canLogTrips }: { items: NavItem[]; ba
   return (
     <nav
       aria-label="Main"
-      className="no-print fixed inset-x-0 bottom-0 z-40 border-t border-ink-100 bg-white/95 pb-[env(safe-area-inset-bottom)] backdrop-blur md:hidden"
+      className="no-print fixed inset-x-0 bottom-0 z-40 border-t border-ink-100 bg-white/95 pb-[env(safe-area-inset-bottom)] backdrop-blur lg:hidden"
     >
       <div className="mx-auto flex max-w-lg items-stretch">
         {tabs.slice(0, 2).map((i) => tab(i, badges[i.href]))}

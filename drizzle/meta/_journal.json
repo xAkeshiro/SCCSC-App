@@ -22,6 +22,20 @@
       "when": 1790791135549,
       "tag": "0002_email_sign_in",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1790793366376,
+      "tag": "0003_phone_bills",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1790793374287,
+      "tag": "0004_phone_security",
+      "breakpoints": true
     }
   ]
 }

@@ -44,9 +44,15 @@ role.
 
 Everything is a **request** (a claim) of a **request type**, made of **request items**.
 
-- `request_types` has one row today: `mileage`. Adding another reimbursement type means a new row,
-  a details table like `mileage_details` if it needs typed fields, and a module in
-  `src/lib/requests/` for its form, validation and calculation.
+- `request_types` has two rows: `mileage` and `phone` (phone bills), added by migration 0004.
+  Adding another reimbursement type means a new row, a details table like `mileage_details` or
+  `phone_details` if it needs typed fields, and a module in `src/lib/requests/` (labels and claim
+  number prefix in `types.ts`) for its form, validation and calculation.
+- **Phone bills** (`src/lib/requests/phone.ts` for the period rules, `src/lib/data/phone.ts` for
+  claiming): a flat monthly rate from `rates`, claimed in periods of `phone_months_per_claim`
+  months from January (2: Jan–Feb claimed from Feb 1, and so on). Each month is one item; a claim
+  is created and submitted in one step. `phone_details` is unique per person and month, so a month
+  can't be claimed twice.
 - Status flow and approvals (`app.*` functions), history, batching and payment are shared by all
   types.
 - No form builder yet (the brief says to wait until several types exist).
@@ -61,13 +67,14 @@ Everything is a **request** (a claim) of a **request type**, made of **request i
 | `staff_state` | Per-person state they may change themselves (when they last read their updates). |
 | `access_requests` | People who verified an email or phone but didn't match the roster, waiting for an admin. |
 | `programs` | Program or grant codes trips are charged to. |
-| `request_types` | `mileage` (more later). |
+| `request_types` | `mileage` and `phone` (more later). |
 | `rates` | Effective-dated rates in cents per unit (`numeric`, so 72.5¢ is exact). |
 | `settings` | Business rules still being decided (home trips, bulk approval limit, session length). |
 | `saved_places` | Shared places (office, school sites) and personal ones (Home). |
 | `requests` | A claim: owner, status, total (kept by trigger), submitted/decided times, batch. |
 | `request_items` | A trip: date, purpose, program, notes, amount in cents. `request_id` is empty until it is submitted. |
 | `mileage_details` | Trip route (from, stops, to), round trip, estimated and claimed miles, override reason, and the **rate it was calculated with**. |
+| `phone_details` | The month a phone bill item pays for and the rate used. One per person and month. |
 | `request_events` | The history: who did what, when, from which status to which, and their comment. Append-only. |
 | `batches` | A pay-period batch: claims, total, exported and paid dates. |
 | `trip_view` (view) | Trips with their details, with home addresses hidden from anyone but the owner. |
@@ -150,11 +157,12 @@ replace it, with results cached.
 | M3 | Submit claims, claim history, return and resubmit, updates, printable claim | done |
 | M4 | Coordinator review: approve, return, deny, bulk approve | done |
 | M5 | Finance: batches, CSV export, mark paid, printable batch, simple report | done |
+| M5b | Phone bill reimbursement (the second request type), renamed "reimbursement tracker" | done |
 | M6 | Admin: roster import, roles and coordinators, rates, programs, settings, audit view | later |
 | M7 | Supabase + real sign-in emails (texts if approved) | later |
 | M8 | Maps provider and notifications | later |
 | M9 | Installable app (PWA), offline trip drafts | later |
-| M10 | Second request type | later |
+| M10 | More request types | later |
 
 ## Moving to Supabase (M7, outline)
 

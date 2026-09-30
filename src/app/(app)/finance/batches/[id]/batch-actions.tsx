@@ -34,7 +34,7 @@ export function ExportButtons({ batchId }: { batchId: string }) {
       {error ? <Notice tone="error">{error}</Notice> : null}
       <div className="flex flex-wrap gap-2">
         <Button type="button" onClick={() => download("detail")} disabled={busy !== null}>
-          <Download aria-hidden className="size-4" /> {busy === "detail" ? "Preparing…" : "Trip detail (CSV)"}
+          <Download aria-hidden className="size-4" /> {busy === "detail" ? "Preparing…" : "Detail (CSV)"}
         </Button>
         <Button type="button" variant="secondary" onClick={() => download("summary")} disabled={busy !== null}>
           <Download aria-hidden className="size-4" /> {busy === "summary" ? "Preparing…" : "Summary (CSV)"}

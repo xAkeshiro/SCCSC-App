@@ -91,8 +91,8 @@ export default async function SignInPage() {
             Log your trips. <span className="text-brand-200">Get reimbursed.</span>
           </h1>
           <p className="mt-5 text-lg text-white/80">
-            Add a trip right after you drive, send your claim to your coordinator, and see when it&apos;s approved and
-            paid. No more printing spreadsheets.
+            Add a trip right after you drive, claim your phone bill every two months, and see when it&apos;s approved
+            and paid. No more printing spreadsheets.
           </p>
         </div>
         <p className="relative text-sm text-white/60 [zoom:0.9]">Sacramento Chinese Community Service Center</p>

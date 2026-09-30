@@ -1,4 +1,5 @@
 /** Plain-language names for request statuses and history actions. */
+import { REQUEST_TYPES, asRequestType } from "./types";
 
 export type RequestStatus = "draft" | "submitted" | "returned" | "approved" | "denied" | "batched" | "paid";
 export type RequestAction =
@@ -26,7 +27,7 @@ export const STATUS_LABEL: Record<RequestStatus, string> = {
 export const STATUS_HELP: Record<RequestStatus, string> = {
   draft: "Not sent yet. Make any changes, then submit it.",
   submitted: "Your coordinator will review it.",
-  returned: "Your coordinator sent it back. Read the comment, fix the trips, then resubmit.",
+  returned: "Your coordinator sent it back. Read the comment, fix it, then resubmit.",
   approved: "Approved. Finance will add it to the next payment batch.",
   denied: "This claim won't be paid. See the comment for why.",
   batched: "Finance has added it to a payment batch.",
@@ -50,8 +51,9 @@ export const EMPLOYEE_ACTION_STATUSES: RequestStatus[] = ["draft", "returned"];
 /** Claims that are open (not finished). */
 export const OPEN_STATUSES: RequestStatus[] = ["draft", "submitted", "returned", "approved", "batched"];
 
-export function claimNumber(ref: number) {
-  return `M-${ref}`;
+/** "M-1001" for mileage, "P-1002" for a phone bill. */
+export function claimNumber(ref: number, type: string) {
+  return `${REQUEST_TYPES[asRequestType(type)].prefix}-${ref}`;
 }
 
 export function batchNumber(ref: number) {

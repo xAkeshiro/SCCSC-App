@@ -1,4 +1,16 @@
-import { ArrowRight, Banknote, CheckCircle2, CircleDollarSign, ListChecks, Plus, RotateCcw, Send, UserPlus, XCircle } from "lucide-react";
+import {
+  ArrowRight,
+  Banknote,
+  CheckCircle2,
+  CircleDollarSign,
+  ListChecks,
+  Plus,
+  RotateCcw,
+  Send,
+  Smartphone,
+  UserPlus,
+  XCircle,
+} from "lucide-react";
 import type { Metadata } from "next";
 import { revalidatePath } from "next/cache";
 import Link from "next/link";
@@ -6,7 +18,8 @@ import { StatusBadge } from "@/components/status-badge";
 import { BrushText, ButtonLink, Card, Container, Eyebrow, Stat } from "@/components/ui";
 import { hasRole, requireViewer } from "@/lib/auth/viewer";
 import { homeSummary, markUpdatesSeen } from "@/lib/data/home";
-import { plural, timeAgo } from "@/lib/format";
+import { phoneBillDue } from "@/lib/data/phone";
+import { formatDay, plural, timeAgo } from "@/lib/format";
 import { formatCents } from "@/lib/money";
 import { firstName } from "@/lib/names";
 import { claimNumber } from "@/lib/requests/status";
@@ -24,6 +37,7 @@ export default async function HomePage() {
   const viewer = await requireViewer();
   const s = await homeSummary(viewer);
   const logsTrips = hasRole(viewer, "employee");
+  const phone = logsTrips ? await phoneBillDue(viewer) : null;
   const newUpdates = s.updates.filter((u) => u.isNew).length;
 
   async function markRead() {
@@ -78,7 +92,7 @@ export default async function HomePage() {
                   >
                     <div className="min-w-0">
                       <div className="flex flex-wrap items-center gap-2">
-                        <span className="font-display text-lg font-semibold">Claim {claimNumber(c.ref)}</span>
+                        <span className="font-display text-lg font-semibold">Claim {claimNumber(c.ref, c.type)}</span>
                         <StatusBadge status={c.status} />
                         <span className="text-ink-500">{formatCents(c.totalCents)}</span>
                       </div>
@@ -97,6 +111,38 @@ export default async function HomePage() {
                 </li>
               ))}
             </ul>
+          </section>
+        ) : null}
+
+        {phone?.available ? (
+          <section aria-labelledby="phone-bill">
+            <div className="card flex flex-col gap-4 p-5 sm:flex-row sm:items-center sm:justify-between sm:p-6">
+              <div className="flex gap-4">
+                <span className="grid size-12 shrink-0 place-items-center rounded-full bg-brand-50 text-brand-600">
+                  <Smartphone aria-hidden className="size-6" />
+                </span>
+                <div>
+                  <h2 id="phone-bill" className="text-xl">
+                    Phone bill
+                  </h2>
+                  {phone.unclaimed.length > 0 ? (
+                    <p className="mt-0.5 text-ink-700">
+                      {phone.period.label} is ready to claim:{" "}
+                      <strong className="font-display text-brand-600">{formatCents(phone.cents)}</strong>
+                    </p>
+                  ) : (
+                    <p className="mt-0.5 text-ink-700">
+                      You&apos;ve claimed {phone.period.label}. The next claim opens{" "}
+                      {formatDay(phone.next.opens, { weekday: false, withYear: false })} for {phone.next.label}.
+                    </p>
+                  )}
+                </div>
+              </div>
+              <ButtonLink href="/phone" variant={phone.unclaimed.length > 0 ? "primary" : "secondary"} className="shrink-0">
+                {phone.unclaimed.length > 0 ? `Claim ${formatCents(phone.cents)}` : "See phone bills"}
+                <ArrowRight aria-hidden className="size-4" />
+              </ButtonLink>
+            </div>
           </section>
         ) : null}
 
@@ -132,7 +178,7 @@ export default async function HomePage() {
         {logsTrips ? (
           <section aria-labelledby="money">
             <h2 id="money" className="sr-only">
-              Your mileage at a glance
+              Your reimbursements at a glance
             </h2>
             <Card className="grid grid-cols-2 gap-x-6 gap-y-6 p-6 sm:p-8 lg:grid-cols-4">
               <Stat value={formatCents(s.unclaimed.cents)} label="Not submitted yet" hint={plural(s.unclaimed.count, "trip")} />
@@ -174,7 +220,7 @@ export default async function HomePage() {
                         <meta.Icon aria-hidden className={`mt-0.5 size-5 shrink-0 ${meta.className}`} />
                         <div className="min-w-0 flex-1">
                           <p>
-                            <span className="font-semibold">Claim {claimNumber(u.ref)}</span> was {meta.text} by {u.actorName}
+                            <span className="font-semibold">Claim {claimNumber(u.ref, u.type)}</span> was {meta.text} by {u.actorName}
                             {u.isNew ? (
                               <span className="ml-2 rounded-full bg-brand-600 px-2 py-0.5 text-xs font-semibold text-white">New</span>
                             ) : null}

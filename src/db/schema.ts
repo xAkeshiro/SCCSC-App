@@ -17,6 +17,7 @@ import {
   check,
   date,
   doublePrecision,
+  foreignKey,
   index,
   integer,
   jsonb,
@@ -173,7 +174,10 @@ export const programs = pgTable("programs", {
   createdAt: createdAt(),
 });
 
-/** Kinds of request. Mileage first; other reimbursements are added as new rows + a module in code. */
+/**
+ * Kinds of request: `mileage` and `phone` (phone bill). Other reimbursements are added as new rows
+ * (in a migration) + a module in code.
+ */
 export const requestTypes = pgTable("request_types", {
   id: text("id").primaryKey(),
   name: text("name").notNull(),
@@ -190,7 +194,7 @@ export const rates = pgTable(
     requestType: text("request_type")
       .notNull()
       .references(() => requestTypes.id),
-    /** Cents per unit (per mile for mileage), e.g. 72.50. */
+    /** Cents per unit: per mile for mileage (e.g. 72.50), per month for phone bills (e.g. 4500.00). */
     rateCents: numeric("rate_cents", { precision: 7, scale: 2 }).notNull(),
     effectiveFrom: date("effective_from").notNull(),
     note: text("note"),
@@ -277,7 +281,10 @@ export const requests = pgTable(
   ],
 );
 
-/** One line of a request. For mileage, one trip (details in mileage_details). */
+/**
+ * One line of a request. For mileage, one trip (details in mileage_details); for phone bills, one
+ * month (details in phone_details).
+ */
 export const requestItems = pgTable(
   "request_items",
   {
@@ -302,6 +309,8 @@ export const requestItems = pgTable(
     index("request_items_owner_idx").on(t.ownerId),
     index("request_items_request_idx").on(t.requestId),
     check("request_items_amount_nonnegative", sql`${t.amountCents} >= 0`),
+    // Lets phone_details copy the owner and be sure it matches.
+    unique("request_items_id_owner_unique").on(t.id, t.ownerId),
   ],
 );
 
@@ -341,6 +350,30 @@ export const mileageDetails = pgTable(
       "mileage_override_needs_reason",
       sql`${t.milesEstimated} is null or ${t.miles} = ${t.milesEstimated} or coalesce(btrim(${t.overrideReason}), '') <> ''`,
     ),
+  ],
+);
+
+/** Phone-bill-specific fields of an item: the month it pays for, at the rate in force then. */
+export const phoneDetails = pgTable(
+  "phone_details",
+  {
+    itemId: uuid("item_id").primaryKey(),
+    /** The item's owner, copied (and checked by the foreign key) so a month is claimed once per person. */
+    ownerId: uuid("owner_id").notNull(),
+    /** First day of the month this pays for. */
+    month: date("month").notNull(),
+    /** The rate this month was paid at (copied, so later rate changes don't alter it). */
+    rateId: uuid("rate_id").references(() => rates.id),
+    rateCents: numeric("rate_cents", { precision: 7, scale: 2 }).notNull(),
+  },
+  (t) => [
+    foreignKey({
+      name: "phone_details_item_fk",
+      columns: [t.itemId, t.ownerId],
+      foreignColumns: [requestItems.id, requestItems.ownerId],
+    }).onDelete("cascade"),
+    unique("phone_details_owner_month_unique").on(t.ownerId, t.month),
+    check("phone_details_first_of_month", sql`extract(day from ${t.month}) = 1`),
   ],
 );
 

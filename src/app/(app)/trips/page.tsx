@@ -117,7 +117,7 @@ export default async function TripsPage({ searchParams }: PageProps<"/trips">) {
                     <td className="px-5 py-3 text-right whitespace-nowrap">{formatCents(t.amountCents)}</td>
                     <td className="px-5 py-3">
                       <Link href={`/claims/${t.requestId}`} className="flex flex-col gap-1 font-semibold text-brand-600 hover:underline">
-                        {claimNumber(t.claimRef)}
+                        {claimNumber(t.claimRef, "mileage")}
                         <StatusBadge status={t.claimStatus} className="w-fit" />
                       </Link>
                     </td>

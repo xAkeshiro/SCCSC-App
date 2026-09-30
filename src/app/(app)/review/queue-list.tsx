@@ -5,14 +5,16 @@ import Link from "next/link";
 import { useState } from "react";
 import { Button, Chip, Notice, cx } from "@/components/ui";
 import { useFormAction } from "@/components/use-form-action";
-import { formatDay, plural, timeAgo } from "@/lib/format";
+import { plural, timeAgo } from "@/lib/format";
 import { formatCents } from "@/lib/money";
 import { claimNumber } from "@/lib/requests/status";
+import { REQUEST_TYPES, itemsSummary, type RequestType } from "@/lib/requests/types";
 import { bulkApprove, type BulkState } from "./actions";
 
 export type QueueItem = {
   id: string;
   ref: number;
+  type: RequestType;
   ownerName: string;
   totalCents: number;
   submittedAt: string;
@@ -67,7 +69,7 @@ export function QueueList({ items, bulkLimitText }: { items: QueueItem[]; bulkLi
                   checked={picked.has(c.id)}
                   onChange={() => toggle(c.id)}
                   className="mt-1 size-5"
-                  aria-label={`Select ${c.ownerName}'s claim ${claimNumber(c.ref)} to approve`}
+                  aria-label={`Select ${c.ownerName}'s claim ${claimNumber(c.ref, c.type)} to approve`}
                 />
               </label>
             ) : (
@@ -77,14 +79,11 @@ export function QueueList({ items, bulkLimitText }: { items: QueueItem[]; bulkLi
               <div className="min-w-0 flex-1">
                 <p className="flex flex-wrap items-baseline gap-x-2">
                   <span className="font-display text-lg font-semibold">{c.ownerName}</span>
-                  <span className="text-ink-500">Claim {claimNumber(c.ref)}</span>
+                  <span className="text-ink-500">Claim {claimNumber(c.ref, c.type)}</span>
+                  <Chip>{REQUEST_TYPES[c.type].label}</Chip>
                 </p>
                 <p className="mt-0.5 text-ink-500">
-                  {plural(c.tripCount, "trip")}
-                  {c.firstDate && c.lastDate
-                    ? ` · ${formatDay(c.firstDate, { weekday: false })}${c.firstDate !== c.lastDate ? ` to ${formatDay(c.lastDate, { weekday: false })}` : ""}`
-                    : ""}{" "}
-                  · sent {timeAgo(c.submittedAt)}
+                  {itemsSummary(c.type, c.tripCount, c.firstDate, c.lastDate)} · sent {timeAgo(c.submittedAt)}
                 </p>
                 {c.note ? <p className="mt-1 text-ink-700">“{c.note}”</p> : null}
                 {c.homeTrips || c.changedMiles ? (
@@ -109,7 +108,7 @@ export function QueueList({ items, bulkLimitText }: { items: QueueItem[]; bulkLi
         ))}
       </ul>
       {picked.size > 0 ? (
-        <div className="card sticky bottom-[5.5rem] z-10 flex items-center justify-between gap-4 px-4 py-3 shadow-[var(--shadow-card)] md:bottom-4 sm:px-5">
+        <div className="card sticky bottom-[5.5rem] z-10 flex items-center justify-between gap-4 px-4 py-3 shadow-[var(--shadow-card)] lg:bottom-4 sm:px-5">
           <p aria-live="polite">
             <span className="font-semibold">{plural(picked.size, "claim")}</span> selected ·{" "}
             <span className="font-display font-semibold text-brand-600">{formatCents(total)}</span>

@@ -1,7 +1,8 @@
 /**
- * Fake demo data. Every name, email, phone number, address and amount here is made up.
- * Phone numbers use the 555-01xx range, which is reserved for fiction, and emails use
- * example.org, which is reserved for examples.
+ * Fake demo data. Every name, email, phone number, address and amount here is made up, except
+ * Eden Redona's own roster entry (the app's owner, at Eden's request, so Eden can sign in to the
+ * demo with a real emailed code). Phone numbers use the 555-01xx range, which is reserved for
+ * fiction, and emails use example.org, which is reserved for examples.
  *
  * Dates are relative to today so the demo always looks current. Claims are spread across every
  * status, with a matching history, so each screen has something to show.
@@ -9,6 +10,8 @@
 import { sql } from "drizzle-orm";
 import { demoEstimateMiles } from "@/lib/distance";
 import { mileageAmountCents, normalizeMiles } from "@/lib/money";
+import { todayIso } from "@/lib/format";
+import { addMonths, formatMonth, latestOpenPeriod, periodOf, phoneAmountCents, type Period } from "@/lib/requests/phone";
 import type { Database, Tx } from "./index";
 import * as s from "./schema";
 
@@ -25,6 +28,8 @@ export const DEMO = {
   felix: { staffId: "00000000-0000-4000-8000-000000000108", userId: null },
   /** Verified their email but isn't on the roster: waiting in the access request queue. */
   nora: { staffId: null, userId: "00000000-0000-4000-9000-000000000109" },
+  /** The app's owner (real name and work email, at Eden's request). On the roster, so an emailed code signs straight in. */
+  eden: { staffId: "00000000-0000-4000-8000-000000000110", userId: null },
 } as const;
 
 type PersonKey = keyof typeof DEMO;
@@ -34,7 +39,7 @@ const PEOPLE: {
   key: Exclude<PersonKey, "nora">;
   name: string;
   email: string;
-  phone: string;
+  phone?: string;
   roles: Role[];
   coordinator: PersonKey | null;
   program: string;
@@ -47,6 +52,7 @@ const PEOPLE: {
   { key: "hazel", name: "Hazel Brightwater", email: "hazel.brightwater@example.org", phone: "+19165550106", roles: ["employee", "finance"], coordinator: "owen", program: "ADM" },
   { key: "sam", name: "Sam Whitlock", email: "sam.whitlock@example.org", phone: "+19165550107", roles: ["employee", "admin"], coordinator: "owen", program: "ADM" },
   { key: "felix", name: "Felix Hartwell", email: "felix.hartwell@example.org", phone: "+19165550108", roles: ["employee"], coordinator: "lena", program: "ECV" },
+  { key: "eden", name: "Eden Redona", email: "eden.redona@sccsc.org", roles: ["employee", "admin"], coordinator: "owen", program: "ADM" },
 ];
 
 const NORA_EMAIL = "nora.pennington@example.org";
@@ -96,6 +102,17 @@ export const DEFAULT_SETTINGS: { key: string; value: unknown; description: strin
   { key: "require_program", value: true, description: "Every trip must have a program or grant code." },
   { key: "session_days", value: 30, description: "How long someone stays signed in on a device." },
   {
+    key: "phone_months_per_claim",
+    value: 2,
+    description:
+      "Phone bills are claimed this many months at a time, in periods from January (2: Jan–Feb claimed from Feb 1, Mar–Apr from Apr 1, …). One of 1, 2, 3, 4, 6 or 12.",
+  },
+  {
+    key: "phone_periods_back",
+    value: 1,
+    description: "How many earlier phone bill periods can still be claimed after the latest one opens. A starting guess; confirm with finance.",
+  },
+  {
     key: "max_trip_age_days",
     value: 365,
     description: "Oldest trip that can be logged, in days. A starting guess; confirm with finance (brief, open question 13).",
@@ -117,7 +134,8 @@ function tsDaysAgo(days: number, hour = 10, minute = 0): Date {
 }
 
 export async function seedIfEmpty(db: Database) {
-  const existing = await db.select({ id: s.requestTypes.id }).from(s.requestTypes).limit(1);
+  // Request types come from a migration, so check for people instead.
+  const existing = await db.select({ id: s.staff.id }).from(s.staff).limit(1);
   if (existing.length > 0) return false;
   await db.transaction((tx) => seed(tx));
   return true;
@@ -136,13 +154,7 @@ function idSequence() {
 async function seed(tx: Tx) {
   const nextId = idSequence();
 
-  // Reference data -----------------------------------------------------------------------------
-  await tx.insert(s.requestTypes).values({
-    id: "mileage",
-    name: "Mileage",
-    description: "Business miles driven in a personal vehicle.",
-    config: { unit: "mile" },
-  });
+  // Reference data (request types come from migration 0004) -----------------------------------
   const programRows = await tx
     .insert(s.programs)
     .values(PROGRAMS.map((p) => ({ ...p, id: nextId() })))
@@ -166,7 +178,7 @@ async function seed(tx: Tx) {
     if (!userId) continue;
     if (person) {
       await tx.execute(
-        sql`insert into auth.users (id, email, phone) values (${userId}::uuid, ${person.email}, ${person.phone.slice(1)})`,
+        sql`insert into auth.users (id, email, phone) values (${userId}::uuid, ${person.email}, ${person.phone?.slice(1) ?? null})`,
       );
     } else {
       await tx.execute(sql`insert into auth.users (id, email) values (${userId}::uuid, ${NORA_EMAIL})`);
@@ -177,10 +189,10 @@ async function seed(tx: Tx) {
       id: DEMO[p.key].staffId!,
       userId: DEMO[p.key].userId,
       fullName: p.name,
-      source: p.key === "felix" ? "roster" : "seed",
+      source: p.key === "felix" || p.key === "eden" ? "roster" : "seed",
       defaultProgramId: programId(p.program),
     });
-    await tx.insert(s.staffPrivate).values({ staffId: DEMO[p.key].staffId!, email: p.email, phoneE164: p.phone });
+    await tx.insert(s.staffPrivate).values({ staffId: DEMO[p.key].staffId!, email: p.email, phoneE164: p.phone ?? null });
     await tx.insert(s.staffRoles).values(p.roles.map((role) => ({ staffId: DEMO[p.key].staffId!, role })));
   }
   for (const p of PEOPLE) {
@@ -283,7 +295,8 @@ async function seed(tx: Tx) {
     comment?: string;
   };
 
-  async function addClaim(owner: PersonKey, trips: Omit<TripSpec, "owner">[], steps: Step[], note?: string) {
+  /** A claim of `type` with its history. Its items are added after. */
+  async function addRequest(type: "mileage" | "phone", owner: PersonKey, steps: Step[], note?: string) {
     const last = steps[steps.length - 1];
     const submitted = [...steps].reverse().find((x) => x.action === "submitted" || x.action === "resubmitted");
     const decided = [...steps].reverse().find((x) => ["approved", "returned", "denied"].includes(x.action));
@@ -291,7 +304,7 @@ async function seed(tx: Tx) {
       .insert(s.requests)
       .values({
         id: nextId(),
-        requestType: "mileage",
+        requestType: type,
         ownerId: DEMO[owner].staffId!,
         status: last.to,
         employeeNote: note ?? null,
@@ -301,7 +314,6 @@ async function seed(tx: Tx) {
         createdAt: tsDaysAgo(steps[0].daysAgo, 17),
       })
       .returning();
-    for (const t of trips) await addTrip({ ...t, owner }, req.id);
     let from: Step["to"] | null = null;
     for (const step of steps) {
       const hour = step.action === "submitted" || step.action === "resubmitted" ? 17 : step.action === "paid" ? 14 : 9;
@@ -318,6 +330,12 @@ async function seed(tx: Tx) {
       from = step.to;
     }
     return req.id;
+  }
+
+  async function addClaim(owner: PersonKey, trips: Omit<TripSpec, "owner">[], steps: Step[], note?: string) {
+    const id = await addRequest("mileage", owner, steps, note);
+    for (const t of trips) await addTrip({ ...t, owner }, id);
+    return id;
   }
 
   // Rowan: two trips not yet submitted, one claim waiting, one approved, one paid.
@@ -486,8 +504,84 @@ async function seed(tx: Tx) {
       createdAt: tsDaysAgo(2, 11),
     })
     .returning();
+  // Phone bills -------------------------------------------------------------------------------
+  const [phoneRate] = await tx
+    .insert(s.rates)
+    .values({
+      id: nextId(),
+      requestType: "phone",
+      rateCents: "4500.00",
+      effectiveFrom: "2025-01-01",
+      note: "$45 a month for using a personal phone for work.",
+    })
+    .returning();
+
+  async function addPhoneMonths(owner: PersonKey, requestId: string, months: string[], daysAgo: number) {
+    const person = PEOPLE.find((p) => p.key === owner)!;
+    for (const month of months) {
+      const [item] = await tx
+        .insert(s.requestItems)
+        .values({
+          id: nextId(),
+          requestType: "phone",
+          ownerId: DEMO[owner].staffId!,
+          requestId,
+          itemDate: month,
+          purpose: `Phone bill, ${formatMonth(month)}`,
+          programId: programId(person.program),
+          amountCents: phoneAmountCents(phoneRate.rateCents),
+          createdAt: tsDaysAgo(daysAgo, 17),
+        })
+        .returning();
+      await tx.insert(s.phoneDetails).values({ itemId: item.id, ownerId: DEMO[owner].staffId!, month, rateId: phoneRate.id, rateCents: phoneRate.rateCents });
+    }
+  }
+
+  // Claim periods are calendar months, so they're worked out from today (2 months per claim). If
+  // the latest period opened in the last few days, the demo claims use the one before it, so each
+  // claim's history has room. Rowan leaves the latest period unclaimed, to show "ready to claim".
+  const today = todayIso();
+  const daysSince = (iso: string) => Math.round((Date.parse(`${today}T12:00:00Z`) - Date.parse(`${iso}T12:00:00Z`)) / 86_400_000);
+  const latest = latestOpenPeriod(today, 2);
+  const shown: Period = daysSince(latest.opens) >= 4 ? latest : periodOf(addMonths(latest.start, -1), 2);
+  const earlier = periodOf(addMonths(shown.start, -1), 2);
+  const open = daysSince(shown.opens);
+  const decidedAgo = Math.max(0, Math.floor((open - 1) / 2));
+
+  // Tessa: waiting for Lena.
+  const tessaPhone = await addRequest("phone", "tessa", [{ action: "submitted", by: "tessa", daysAgo: decidedAgo, to: "submitted" }]);
+  await addPhoneMonths("tessa", tessaPhone, shown.months, decidedAgo);
+  // Marcus: approved by Owen, ready for finance.
+  const marcusPhone = await addRequest("phone", "marcus", [
+    { action: "submitted", by: "marcus", daysAgo: open - 1, to: "submitted" },
+    { action: "approved", by: "owen", daysAgo: decidedAgo, to: "approved" },
+  ]);
+  await addPhoneMonths("marcus", marcusPhone, shown.months, open - 1);
+  // Lena: returned by Owen, to take out a month.
+  const [firstMonth, secondMonth] = shown.months.map((m) => formatMonth(m, { withYear: false }));
+  const lenaPhone = await addRequest("phone", "lena", [
+    { action: "submitted", by: "lena", daysAgo: open - 1, to: "submitted" },
+    {
+      action: "returned",
+      by: "owen",
+      daysAgo: decidedAgo,
+      to: "returned",
+      comment: `You were on leave in ${firstMonth}, so please take ${firstMonth} out and resubmit for ${secondMonth} only.`,
+    },
+  ]);
+  await addPhoneMonths("lena", lenaPhone, shown.months, open - 1);
+  // Rowan: the period before was paid in batch B-101, with his mileage.
+  const earlierOpen = daysSince(earlier.opens);
+  const rowanPhone = await addRequest("phone", "rowan", [
+    { action: "submitted", by: "rowan", daysAgo: earlierOpen - 2, to: "submitted" },
+    { action: "approved", by: "lena", daysAgo: earlierOpen - 4, to: "approved" },
+    { action: "batched", by: "hazel", daysAgo: 33, to: "batched", comment: "Added to batch B-101" },
+    { action: "paid", by: "hazel", daysAgo: 30, to: "paid", comment: "Paid in batch B-101" },
+  ]);
+  await addPhoneMonths("rowan", rowanPhone, earlier.months, earlierOpen - 2);
+
   await tx.execute(
-    sql`update public.requests set batch_id = ${paidBatch.id}::uuid where id in (${rowanPaid}::uuid, ${hazelPaid}::uuid)`,
+    sql`update public.requests set batch_id = ${paidBatch.id}::uuid where id in (${rowanPaid}::uuid, ${hazelPaid}::uuid, ${rowanPhone}::uuid)`,
   );
   await tx.execute(sql`update public.requests set batch_id = ${openBatch.id}::uuid where id = ${tessaBatched}::uuid`);
   await tx.execute(

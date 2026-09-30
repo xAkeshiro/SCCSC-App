@@ -8,6 +8,8 @@ import { rows, uuidArray, withUser } from "@/db/with-user";
 import { hasRole, type Viewer } from "@/lib/auth/viewer";
 import { UserError } from "@/lib/errors";
 import type { RequestAction, RequestStatus } from "@/lib/requests/status";
+import { asRequestType, type RequestType } from "@/lib/requests/types";
+import { phoneMonthsForRequests, type PhoneMonthRecord } from "./phone";
 import { selectTrips, tripsForRequests, type TripRecord } from "./trips";
 
 const isUuid = (id: string) => z.string().uuid().safeParse(id).success;
@@ -15,6 +17,7 @@ const isUuid = (id: string) => z.string().uuid().safeParse(id).success;
 export type ClaimListItem = {
   id: string;
   ref: number;
+  type: RequestType;
   status: RequestStatus;
   totalCents: number;
   submittedAt: Date | null;
@@ -29,6 +32,7 @@ export async function myClaims(viewer: Viewer): Promise<ClaimListItem[]> {
     const list = await rows<{
       id: string;
       ref: number;
+      request_type: string;
       status: RequestStatus;
       total_cents: number;
       submitted_at: string | null;
@@ -38,7 +42,7 @@ export async function myClaims(viewer: Viewer): Promise<ClaimListItem[]> {
       last_date: string | null;
     }>(
       tx,
-      sql`select r.id, r.ref::int as ref, r.status, r.total_cents, r.submitted_at, r.updated_at,
+      sql`select r.id, r.ref::int as ref, r.request_type, r.status, r.total_cents, r.submitted_at, r.updated_at,
                  count(i.id)::int as trip_count, min(i.item_date)::text as first_date, max(i.item_date)::text as last_date
           from public.requests r
           left join public.request_items i on i.request_id = r.id
@@ -49,6 +53,7 @@ export async function myClaims(viewer: Viewer): Promise<ClaimListItem[]> {
     return list.map((r) => ({
       id: r.id,
       ref: r.ref,
+      type: asRequestType(r.request_type),
       status: r.status,
       totalCents: r.total_cents,
       submittedAt: r.submitted_at ? new Date(r.submitted_at) : null,
@@ -73,6 +78,7 @@ export type ClaimEvent = {
 export type ClaimDetail = {
   id: string;
   ref: number;
+  type: RequestType;
   status: RequestStatus;
   totalCents: number;
   employeeNote: string | null;
@@ -80,7 +86,10 @@ export type ClaimDetail = {
   decidedAt: Date | null;
   owner: { id: string; fullName: string; coordinatorName: string | null };
   batch: { id: string; ref: number; status: string; paidOn: string | null; periodStart: string; periodEnd: string } | null;
+  /** Mileage claims: the trips. */
   trips: TripRecord[];
+  /** Phone bill claims: the months. */
+  phoneMonths: PhoneMonthRecord[];
   events: ClaimEvent[];
   /** Latest comment from whoever returned or denied it. */
   lastDecision: ClaimEvent | null;
@@ -114,6 +123,7 @@ export async function claimDetail(viewer: Viewer, id: string): Promise<ClaimDeta
           .where(eq(batches.id, claim.batchId))
       : [];
     const trips = await tripsForRequests(tx, [claim.id]);
+    const phoneMonths = await phoneMonthsForRequests(tx, [claim.id]);
     const events = (
       await tx.select().from(requestEvents).where(eq(requestEvents.requestId, claim.id)).orderBy(asc(requestEvents.createdAt), asc(requestEvents.id))
     ).map((e) => ({
@@ -132,6 +142,7 @@ export async function claimDetail(viewer: Viewer, id: string): Promise<ClaimDeta
     return {
       id: claim.id,
       ref: claim.ref,
+      type: asRequestType(claim.requestType),
       status: claim.status,
       totalCents: claim.totalCents,
       employeeNote: claim.employeeNote,
@@ -140,6 +151,7 @@ export async function claimDetail(viewer: Viewer, id: string): Promise<ClaimDeta
       owner: { id: owner.id, fullName: owner.fullName, coordinatorName: owner.coordinatorName },
       batch: batch ?? null,
       trips,
+      phoneMonths,
       events,
       lastDecision: [...events].reverse().find((e) => e.action === "returned" || e.action === "denied") ?? null,
       can: {
@@ -218,16 +230,27 @@ export async function claimsForPrint(viewer: Viewer, ids: string[]) {
   if (valid.length === 0) return [];
   return withUser(viewer.userId, async (tx) => {
     const list = await tx
-      .select({ id: requests.id, ref: requests.ref, status: requests.status, totalCents: requests.totalCents, ownerName: staff.fullName, submittedAt: requests.submittedAt })
+      .select({
+        id: requests.id,
+        ref: requests.ref,
+        requestType: requests.requestType,
+        status: requests.status,
+        totalCents: requests.totalCents,
+        ownerName: staff.fullName,
+        submittedAt: requests.submittedAt,
+      })
       .from(requests)
       .innerJoin(staff, eq(staff.id, requests.ownerId))
       .where(inArray(requests.id, valid))
       .orderBy(asc(staff.fullName), asc(requests.ref));
     const trips = await tripsForRequests(tx, list.map((c) => c.id));
+    const phoneMonths = await phoneMonthsForRequests(tx, list.map((c) => c.id));
     const events = await tx.select().from(requestEvents).where(inArray(requestEvents.requestId, list.map((c) => c.id))).orderBy(desc(requestEvents.createdAt));
     return list.map((c) => ({
       ...c,
+      type: asRequestType(c.requestType),
       trips: trips.filter((t) => t.requestId === c.id),
+      phoneMonths: phoneMonths.filter((m) => m.requestId === c.id),
       approval: events.find((e) => e.requestId === c.id && e.action === "approved") ?? null,
       events: events.filter((e) => e.requestId === c.id).reverse(),
     }));

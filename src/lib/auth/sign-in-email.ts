@@ -1,5 +1,5 @@
 /**
- * The sign-in code email, in the sccsc.org look: the red 心 mark and lowercase "mileage tracker"
+ * The sign-in code email, in the sccsc.org look: the red 心 mark and lowercase "reimbursement tracker"
  * wordmark, a white card with a red top edge, the red-heart eyebrow, and the code on the pink tint.
  *
  * Built for email clients: tables and inline styles only, web fonts with Arial fallbacks, no images
@@ -44,12 +44,12 @@ export function signInCodeEmail({
   const first = fullName?.trim().split(/\s+/)[0];
   const who = fullName?.trim() ? `${fullName.trim()}, ${contactMasked}` : contactMasked;
   const subject = `${code} is your SCCSC sign-in code`;
-  const preheader = `Use ${code} to sign in to the mileage tracker. It works for ${CODE_TTL_MINUTES} minutes.`;
+  const preheader = `Use ${code} to sign in to the reimbursement tracker. It works for ${CODE_TTL_MINUTES} minutes.`;
 
   const text = [
     `${first ? `Hi ${first},` : "Hi,"}`,
     "",
-    `Your SCCSC mileage tracker sign-in code is: ${code}`,
+    `Your SCCSC reimbursement tracker sign-in code is: ${code}`,
     `It works for ${CODE_TTL_MINUTES} minutes.`,
     "",
     `Signing in as: ${who}`,
@@ -84,7 +84,7 @@ export function signInCodeEmail({
               <tr>
                 <td width="40" height="40" align="center" valign="middle" style="width:40px;height:40px;background:${RED};border-radius:6px;color:#ffffff;font-family:'Kaiti SC','STKaiti','KaiTi','Songti SC','SimSun',serif;font-size:26px;line-height:40px;">&#24515;</td>
                 <td style="padding-left:12px;font-family:${SERIF_FONT};line-height:1;">
-                  <span style="font-size:19px;color:${CHARCOAL};">mileage</span>
+                  <span style="font-size:19px;color:${CHARCOAL};">reimbursement</span>
                   <span style="font-size:28px;color:${RED};">tracker</span><br>
                   <span style="font-size:11px;color:${MUTED};line-height:1.6;">sacramento chinese community service center</span>
                 </td>
@@ -103,7 +103,7 @@ export function signInCodeEmail({
               <span style="border-bottom:6px solid ${TINT_BORDER};">Your sign-in code</span>
             </h1>
             <p style="margin:0 0 28px;font-family:${BODY_FONT};font-size:16px;line-height:1.6;color:${MUTED};">
-              ${first ? `Hi ${escapeHtml(first)}, use` : "Use"} this code to finish signing in to the mileage tracker.
+              ${first ? `Hi ${escapeHtml(first)}, use` : "Use"} this code to finish signing in to the reimbursement tracker.
               It works for ${CODE_TTL_MINUTES} minutes.
             </p>
 

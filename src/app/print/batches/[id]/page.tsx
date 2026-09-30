@@ -5,6 +5,7 @@ import { hasRole, requireViewer } from "@/lib/auth/viewer";
 import { batchDetail } from "@/lib/data/finance";
 import { formatDateTime, formatDay } from "@/lib/format";
 import { formatCents } from "@/lib/money";
+import { formatMonths } from "@/lib/requests/phone";
 import { batchNumber, claimNumber } from "@/lib/requests/status";
 
 export const metadata: Metadata = { title: "Print batch" };
@@ -19,7 +20,7 @@ export default async function PrintBatchPage({ params }: PageProps<"/print/batch
 
   return (
     <PrintSheet
-      title="Mileage payment batch"
+      title="Reimbursement payment batch"
       subtitle={
         <>
           Batch {batchNumber(batch.ref)} · {status}
@@ -48,7 +49,7 @@ export default async function PrintBatchPage({ params }: PageProps<"/print/batch
           <tr className="border-b border-ink text-[12px]">
             <th className="py-1.5 pr-2 font-semibold">Employee</th>
             <th className="py-1.5 pr-2 font-semibold">Claim</th>
-            <th className="py-1.5 pr-2 text-right font-semibold">Trips</th>
+            <th className="py-1.5 pr-2 font-semibold">For</th>
             <th className="py-1.5 pr-2 text-right font-semibold">Miles</th>
             <th className="py-1.5 pr-2 font-semibold">Approved</th>
             <th className="py-1.5 text-right font-semibold">Amount</th>
@@ -58,9 +59,11 @@ export default async function PrintBatchPage({ params }: PageProps<"/print/batch
           {batch.claims.map((c) => (
             <tr key={c.id} className="border-b border-ink-100 align-top">
               <td className="py-1.5 pr-2">{c.ownerName}</td>
-              <td className="py-1.5 pr-2">{claimNumber(c.ref)}</td>
-              <td className="py-1.5 pr-2 text-right">{c.trips.length}</td>
-              <td className="py-1.5 pr-2 text-right">{c.miles.toFixed(1)}</td>
+              <td className="py-1.5 pr-2">{claimNumber(c.ref, c.type)}</td>
+              <td className="py-1.5 pr-2">
+                {c.type === "phone" ? `Phone bill, ${formatMonths(c.phoneMonths.map((m) => m.month))}` : `${c.trips.length} ${c.trips.length === 1 ? "trip" : "trips"}`}
+              </td>
+              <td className="py-1.5 pr-2 text-right">{c.type === "phone" ? "—" : c.miles.toFixed(1)}</td>
               <td className="py-1.5 pr-2">{c.approvedBy ? `${c.approvedBy}, ${c.approvedAt ? formatDateTime(c.approvedAt) : ""}` : "—"}</td>
               <td className="py-1.5 text-right">{formatCents(c.totalCents)}</td>
             </tr>
@@ -85,7 +88,11 @@ export default async function PrintBatchPage({ params }: PageProps<"/print/batch
                 <td className="py-1 pr-2">
                   {p.code}: {p.name}
                 </td>
-                <td className="py-1 pr-2 text-right">{p.miles.toFixed(1)} mi</td>
+                <td className="py-1 pr-2 text-right">
+                  {[p.trips ? `${p.miles.toFixed(1)} mi` : null, p.months ? `${p.months} phone ${p.months === 1 ? "month" : "months"}` : null]
+                    .filter(Boolean)
+                    .join(", ")}
+                </td>
                 <td className="py-1 text-right">{formatCents(p.cents)}</td>
               </tr>
             ))}

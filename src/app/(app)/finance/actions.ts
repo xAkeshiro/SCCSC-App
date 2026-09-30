@@ -4,11 +4,12 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { requireRole } from "@/lib/auth/viewer";
 import { dollars, toCsv } from "@/lib/csv";
-import { addToBatch, batchDetail, createBatch, markBatchExported, markBatchPaid, mileageReport, removeFromBatch } from "@/lib/data/finance";
+import { addToBatch, batchDetail, createBatch, markBatchExported, markBatchPaid, reimbursementReport, removeFromBatch } from "@/lib/data/finance";
 import { errorMessage } from "@/lib/errors";
 import { batchCsv } from "@/lib/requests/export";
 import { parseReportFilters } from "@/lib/requests/report-filters";
 import { STATUS_LABEL, batchNumber, claimNumber } from "@/lib/requests/status";
+import { REQUEST_TYPES } from "@/lib/requests/types";
 
 export type FinanceState = { error?: string };
 
@@ -84,7 +85,7 @@ export async function exportBatchFile(batchId: string, format: "detail" | "summa
   return { ok: true, filename: `${batchNumber(batch.ref)}-${layout}.csv`, csv: batchCsv(batch, layout) };
 }
 
-/** The mileage report's trips as a CSV, for the filters in `query` (the report page's URL query). */
+/** The report's lines (trips and phone bill months) as a CSV, for the filters in `query` (the report page's URL query). */
 export async function exportReportFile(query: string): Promise<CsvFile> {
   const viewer = await requireRole("finance", "admin");
   const search = new URLSearchParams(query.slice(0, 2000));
@@ -94,20 +95,21 @@ export async function exportReportFile(query: string): Promise<CsvFile> {
     params[key] = all.length > 1 ? all : all[0];
   }
   const filters = parseReportFilters(params);
-  const report = await mileageReport(viewer, filters);
+  const report = await reimbursementReport(viewer, filters);
   const csv = toCsv(
-    ["Trip date", "Employee", "Business purpose", "Route", "Program code", "Claim", "Claim status", "Miles", "Amount"],
-    report.trips.map((t) => [
+    ["Type", "Date", "Employee", "Business purpose", "Route or month", "Program code", "Claim", "Claim status", "Miles", "Amount"],
+    report.lines.map((t) => [
+      REQUEST_TYPES[t.type].label,
       t.date,
       t.ownerName,
       t.purpose,
-      t.route,
+      t.detail,
       t.programCode ?? "",
-      claimNumber(t.claimRef),
+      claimNumber(t.claimRef, t.type),
       STATUS_LABEL[t.claimStatus],
-      t.miles.toFixed(1),
+      t.miles === null ? "" : t.miles.toFixed(1),
       dollars(t.amountCents),
     ]),
   );
-  return { ok: true, filename: `mileage-${filters.from}-to-${filters.to}.csv`, csv };
+  return { ok: true, filename: `reimbursements-${filters.from}-to-${filters.to}.csv`, csv };
 }

@@ -122,7 +122,7 @@ export function ClaimBuilder({
         </label>
       </div>
 
-      <div className="card sticky bottom-[5.5rem] z-10 flex items-center justify-between gap-4 px-4 py-3 shadow-[var(--shadow-card)] md:bottom-4 sm:px-5">
+      <div className="card sticky bottom-[5.5rem] z-10 flex items-center justify-between gap-4 px-4 py-3 shadow-[var(--shadow-card)] lg:bottom-4 sm:px-5">
         <div aria-live="polite">
           <p className="text-sm text-ink-500">
             {chosen.length} of {trips.length} {trips.length === 1 ? "trip" : "trips"} · {formatMiles(miles)}

@@ -17,7 +17,13 @@ export default async function FinancePage() {
   const { approved, batches } = await financeOverview(viewer);
   const readyTotal = approved.reduce((n, c) => n + c.totalCents, 0);
   const today = todayIso();
-  const firstDates = approved.map((c) => c.firstDate).filter((d): d is string => Boolean(d)).sort();
+  // The pay period defaults to start at the earliest trip. Phone bill months (dated the 1st) would
+  // stretch it back, so they don't count.
+  const firstDates = approved
+    .filter((c) => c.type === "mileage")
+    .map((c) => c.firstDate)
+    .filter((d): d is string => Boolean(d))
+    .sort();
   const openBatches = batches.filter((b) => b.status === "open");
 
   return (
@@ -50,6 +56,7 @@ export default async function FinancePage() {
               claims={approved.map((c) => ({
                 id: c.id,
                 ref: c.ref,
+                type: c.type,
                 ownerName: c.ownerName,
                 totalCents: c.totalCents,
                 tripCount: c.tripCount,

@@ -6,13 +6,17 @@ import { ConfirmButton } from "@/components/confirm-button";
 import { StatusBadge } from "@/components/status-badge";
 import { Timeline } from "@/components/timeline";
 import { TripSummary } from "@/components/trip-summary";
-import { ButtonLink, Card, Container, Eyebrow, Notice } from "@/components/ui";
+import { ButtonLink, Card, Chip, Container, Eyebrow, Notice } from "@/components/ui";
 import { hasRole, requireViewer } from "@/lib/auth/viewer";
 import { claimDetail, unclaimedTrips } from "@/lib/data/claims";
 import { formatDate, formatDay, plural } from "@/lib/format";
 import { formatCents, formatMiles } from "@/lib/money";
+import { formatMonth, formatMonths } from "@/lib/requests/phone";
 import { toPickable } from "@/lib/requests/pickable";
 import { STATUS_HELP, batchNumber, claimNumber } from "@/lib/requests/status";
+import { REQUEST_TYPES } from "@/lib/requests/types";
+import { resubmitPhone } from "../../phone/actions";
+import { PhoneMonthPicker } from "../../phone/month-picker";
 import { resubmit, withdraw } from "../actions";
 import { ClaimBuilder } from "../claim-builder";
 import { ReviewPanel } from "./review-panel";
@@ -35,8 +39,9 @@ export default async function ClaimPage({ params, searchParams }: PageProps<"/cl
   const claim = await claimDetail(viewer, id);
   if (!claim) notFound();
 
+  const isPhone = claim.type === "phone";
   const miles = claim.trips.reduce((n, t) => n + Number(t.miles), 0);
-  const extraTrips = claim.can.resubmit ? await unclaimedTrips(viewer) : [];
+  const extraTrips = claim.can.resubmit && !isPhone ? await unclaimedTrips(viewer) : [];
   const backHref = claim.isOwner ? "/claims" : claim.can.review ? "/review" : hasRole(viewer, "finance", "admin") ? "/finance" : "/";
   const backLabel = claim.isOwner ? "Claims" : claim.can.review ? "Review" : hasRole(viewer, "finance", "admin") ? "Finance" : "Home";
   const dates = claim.trips.map((t) => t.date).sort();
@@ -51,7 +56,8 @@ export default async function ClaimPage({ params, searchParams }: PageProps<"/cl
         <div>
           <Eyebrow>{claim.isOwner ? "Your claim" : `${claim.owner.fullName}'s claim`}</Eyebrow>
           <h1 className="mt-2 flex flex-wrap items-center gap-3 text-[1.75rem] sm:text-4xl">
-            Claim {claimNumber(claim.ref)} <StatusBadge status={claim.status} className="text-sm" />
+            Claim {claimNumber(claim.ref, claim.type)} <StatusBadge status={claim.status} className="text-sm" />
+            <Chip className="text-sm">{REQUEST_TYPES[claim.type].label}</Chip>
           </h1>
           {claim.isOwner ? <p className="mt-2 text-ink-500">{STATUS_HELP[claim.status]}</p> : null}
         </div>
@@ -93,12 +99,28 @@ export default async function ClaimPage({ params, searchParams }: PageProps<"/cl
         <div className="space-y-8">
           <section aria-labelledby="trips">
             <h2 id="trips" className="text-2xl">
-              Trips
+              {isPhone ? "Phone bill" : "Trips"}
             </h2>
             {claim.employeeNote ? (
               <p className="mt-2 text-ink-700">
                 <span className="font-semibold">Note from {claim.isOwner ? "you" : claim.owner.fullName}:</span> “{claim.employeeNote}”
               </p>
+            ) : null}
+            {isPhone ? (
+              <ul className="card mt-4 divide-y divide-ink-100">
+                {claim.phoneMonths.map((m) => (
+                  <li key={m.id} className="flex items-center justify-between gap-4 px-5 py-4">
+                    <span>
+                      <span className="block font-display text-lg font-medium">{formatMonth(m.month)}</span>
+                      <span className="block text-sm text-ink-500">
+                        {formatCents(Math.round(Number(m.rateCents)))} a month
+                        {m.programCode ? ` · ${m.programCode}: ${m.programName}` : ""}
+                      </span>
+                    </span>
+                    <span className="font-display text-lg font-semibold">{formatCents(m.amountCents)}</span>
+                  </li>
+                ))}
+              </ul>
             ) : null}
             <ul className="mt-4 grid gap-3">
               {claim.trips.map((trip) => (
@@ -118,7 +140,7 @@ export default async function ClaimPage({ params, searchParams }: PageProps<"/cl
                 </li>
               ))}
             </ul>
-            {claim.trips.length === 0 ? <p className="mt-3 text-ink-500">This claim has no trips.</p> : null}
+            {!isPhone && claim.trips.length === 0 ? <p className="mt-3 text-ink-500">This claim has no trips.</p> : null}
           </section>
 
           {claim.can.review || claim.can.returnApproved ? (
@@ -127,11 +149,33 @@ export default async function ClaimPage({ params, searchParams }: PageProps<"/cl
               ownerName={claim.owner.fullName}
               totalCents={claim.totalCents}
               mode={claim.can.review ? "review" : "return-approved"}
-              flagged={claim.trips.some((t) => t.involvesHome || t.overrideReason)}
+              flagged={!isPhone && claim.trips.some((t) => t.involvesHome || t.overrideReason)}
             />
           ) : null}
 
-          {claim.can.resubmit ? (
+          {claim.can.resubmit && isPhone ? (
+            <section aria-labelledby="resubmit" className="border-t border-ink-100 pt-8">
+              <h2 id="resubmit" className="text-2xl">
+                {claim.status === "returned" ? "Fix and resubmit" : "Send it again"}
+              </h2>
+              <p className="mt-1 mb-4 text-ink-500">
+                Untick any month that shouldn&apos;t be in this claim. Months you take out can be claimed again later.
+              </p>
+              <PhoneMonthPicker
+                groups={[
+                  {
+                    title: null,
+                    months: claim.phoneMonths.map((m) => ({ value: m.id, month: m.month, amountCents: m.amountCents, checked: true })),
+                  },
+                ]}
+                field="item"
+                action={resubmitPhone.bind(null, claim.id)}
+                submitLabel="Resubmit claim"
+              />
+            </section>
+          ) : null}
+
+          {claim.can.resubmit && !isPhone ? (
             <section aria-labelledby="resubmit" className="border-t border-ink-100 pt-8">
               <h2 id="resubmit" className="text-2xl">
                 {claim.status === "returned" ? "Fix and resubmit" : "Send it again"}
@@ -156,11 +200,17 @@ export default async function ClaimPage({ params, searchParams }: PageProps<"/cl
             <dl className="mt-3 space-y-2.5 text-[0.95rem]">
               <Row label="Employee" value={claim.owner.fullName} />
               <Row label="Approver" value={claim.owner.coordinatorName ?? "An admin"} />
-              <Row
-                label="Trips"
-                value={`${plural(claim.trips.length, "trip")}${dates.length ? `, ${formatDay(dates[0], { weekday: false })} to ${formatDay(dates[dates.length - 1], { weekday: false })}` : ""}`}
-              />
-              <Row label="Miles" value={formatMiles(miles)} />
+              {isPhone ? (
+                <Row label="Months" value={formatMonths(claim.phoneMonths.map((m) => m.month)) || "None"} />
+              ) : (
+                <>
+                  <Row
+                    label="Trips"
+                    value={`${plural(claim.trips.length, "trip")}${dates.length ? `, ${formatDay(dates[0], { weekday: false })} to ${formatDay(dates[dates.length - 1], { weekday: false })}` : ""}`}
+                  />
+                  <Row label="Miles" value={formatMiles(miles)} />
+                </>
+              )}
               {claim.submittedAt ? <Row label="Sent" value={formatDate(claim.submittedAt)} /> : null}
               {claim.batch ? (
                 <Row

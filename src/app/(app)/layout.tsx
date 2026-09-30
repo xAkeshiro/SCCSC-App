@@ -59,7 +59,7 @@ export default async function AppLayout({ children }: LayoutProps<"/">) {
         <Container className="flex min-h-16 items-center justify-between gap-4 py-2 md:min-h-20">
           <Logo />
           <HeaderNav items={items} badges={badges} />
-          <div className="hidden md:block">
+          <div className="hidden lg:block">
             {canLogTrips ? (
               <ButtonLink href="/trips/new">
                 <Plus aria-hidden className="size-5" /> Log a trip
@@ -69,7 +69,7 @@ export default async function AppLayout({ children }: LayoutProps<"/">) {
         </Container>
       </header>
 
-      <main id="main" className="flex-1 pb-28 md:pb-12">
+      <main id="main" className="flex-1 pb-28 lg:pb-12">
         {children}
       </main>
 

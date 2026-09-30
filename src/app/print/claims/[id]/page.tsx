@@ -5,6 +5,7 @@ import { requireViewer } from "@/lib/auth/viewer";
 import { claimsForPrint } from "@/lib/data/claims";
 import { formatDateTime, formatDay } from "@/lib/format";
 import { formatCents, formatRate } from "@/lib/money";
+import { formatMonth } from "@/lib/requests/phone";
 import { routeText } from "@/lib/requests/pickable";
 import { ACTION_LABEL, STATUS_LABEL, claimNumber } from "@/lib/requests/status";
 
@@ -17,13 +18,17 @@ export default async function PrintClaimPage({ params }: PageProps<"/print/claim
   if (!claim) notFound();
   const miles = claim.trips.reduce((n, t) => n + Number(t.miles), 0);
   const submitted = claim.events.find((e) => e.action === "submitted" || e.action === "resubmitted");
+  const isPhone = claim.type === "phone";
+  const certified = isPhone
+    ? "confirmed they used their own phone for SCCSC work during these months"
+    : "confirmed these trips were for SCCSC business and the details are correct";
 
   return (
     <PrintSheet
-      title="Mileage reimbursement claim"
+      title={isPhone ? "Phone bill reimbursement claim" : "Mileage reimbursement claim"}
       subtitle={
         <>
-          Claim {claimNumber(claim.ref)} · {STATUS_LABEL[claim.status]}
+          Claim {claimNumber(claim.ref, claim.type)} · {STATUS_LABEL[claim.status]}
         </>
       }
     >
@@ -42,6 +47,36 @@ export default async function PrintClaimPage({ params }: PageProps<"/print/claim
         </div>
       </dl>
 
+      {isPhone ? (
+        <table className="w-full border-collapse text-left">
+          <thead>
+            <tr className="border-b border-ink text-[12px]">
+              <th className="py-1.5 pr-2 font-semibold">Month</th>
+              <th className="py-1.5 pr-2 font-semibold">Program</th>
+              <th className="py-1.5 pr-2 text-right font-semibold">Rate</th>
+              <th className="py-1.5 text-right font-semibold">Amount</th>
+            </tr>
+          </thead>
+          <tbody>
+            {claim.phoneMonths.map((m) => (
+              <tr key={m.id} className="border-b border-ink-100">
+                <td className="py-1.5 pr-2">{formatMonth(m.month)}</td>
+                <td className="py-1.5 pr-2">{m.programCode}</td>
+                <td className="py-1.5 pr-2 text-right">{formatCents(Math.round(Number(m.rateCents)))} a month</td>
+                <td className="py-1.5 text-right">{formatCents(m.amountCents)}</td>
+              </tr>
+            ))}
+          </tbody>
+          <tfoot>
+            <tr className="border-t-2 border-ink font-semibold">
+              <td className="py-2" colSpan={3}>
+                Total ({claim.phoneMonths.length} {claim.phoneMonths.length === 1 ? "month" : "months"})
+              </td>
+              <td className="py-2 text-right">{formatCents(claim.totalCents)}</td>
+            </tr>
+          </tfoot>
+        </table>
+      ) : (
       <table className="w-full border-collapse text-left">
         <thead>
           <tr className="border-b border-ink text-[12px]">
@@ -81,13 +116,14 @@ export default async function PrintClaimPage({ params }: PageProps<"/print/claim
           </tr>
         </tfoot>
       </table>
+      )}
 
       <div className="grid grid-cols-2 gap-6">
         <div className="rounded-[var(--radius-btn)] border border-ink-100 p-3">
           <p className="font-semibold">Employee certification</p>
           <p className="mt-1">
             {submitted
-              ? `${submitted.actorName} confirmed these trips were for SCCSC business and the details are correct on ${formatDateTime(submitted.createdAt)}.`
+              ? `${submitted.actorName} ${certified} on ${formatDateTime(submitted.createdAt)}.`
               : "Not submitted yet."}
           </p>
         </div>

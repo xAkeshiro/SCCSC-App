@@ -72,6 +72,13 @@ describe("after the email or phone is verified", () => {
     expect(outcome.kind).toBe("signed-in");
   });
 
+  it("Eden is on the roster, so an emailed code signs straight in as an admin", async () => {
+    const { outcome } = await signIn(email("eden.redona@sccsc.org"), "Eden Redona");
+    expect(outcome).toEqual({ kind: "signed-in", staffId: staffIdOf("eden") });
+    const roles = await rows<{ role: string }>(t.db, sql`select role::text from public.staff_roles where staff_id = ${staffIdOf("eden")}::uuid`);
+    expect(roles.map((r) => r.role).sort()).toEqual(["admin", "employee"]);
+  });
+
   it("the same person can switch to their phone, and keeps one account", async () => {
     const byEmail = await signIn(email("felix.hartwell@example.org"), "Felix Hartwell");
     const byPhone = await signIn(phone("+19165550108"), "Felix Hartwell");

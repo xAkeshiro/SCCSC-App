@@ -8,6 +8,9 @@ import { rows, uuidArray, withUser } from "@/db/with-user";
 import type { Viewer } from "@/lib/auth/viewer";
 import { UserError } from "@/lib/errors";
 import type { RequestStatus } from "@/lib/requests/status";
+import { formatMonth } from "@/lib/requests/phone";
+import { asRequestType, type RequestType } from "@/lib/requests/types";
+import { phoneMonthsForRequests } from "./phone";
 import { tripsForRequests } from "./trips";
 
 const isUuid = (id: string) => z.string().uuid().safeParse(id).success;
@@ -18,6 +21,7 @@ export type BatchStatus = "open" | "exported" | "paid";
 export type ApprovedClaim = {
   id: string;
   ref: number;
+  type: RequestType;
   ownerName: string;
   totalCents: number;
   tripCount: number;
@@ -32,6 +36,7 @@ export async function financeOverview(viewer: Viewer) {
     const approved = await rows<{
       id: string;
       ref: number;
+      request_type: string;
       owner_name: string;
       total_cents: number;
       trip_count: number;
@@ -41,7 +46,7 @@ export async function financeOverview(viewer: Viewer) {
       approved_at: string | null;
     }>(
       tx,
-      sql`select r.id, r.ref::int as ref, s.full_name as owner_name, r.total_cents,
+      sql`select r.id, r.ref::int as ref, r.request_type, s.full_name as owner_name, r.total_cents,
                  count(i.id)::int as trip_count, min(i.item_date)::text as first_date, max(i.item_date)::text as last_date,
                  a.actor_name as approved_by, a.created_at as approved_at
           from public.requests r
@@ -79,6 +84,7 @@ export async function financeOverview(viewer: Viewer) {
       approved: approved.map<ApprovedClaim>((c) => ({
         id: c.id,
         ref: c.ref,
+        type: asRequestType(c.request_type),
         ownerName: c.owner_name,
         totalCents: c.total_cents,
         tripCount: c.trip_count,
@@ -132,12 +138,20 @@ export async function batchDetail(viewer: Viewer, id: string) {
       .limit(1);
     if (!batch) return null;
     const claims = await tx
-      .select({ id: requests.id, ref: requests.ref, status: requests.status, totalCents: requests.totalCents, ownerName: staff.fullName })
+      .select({
+        id: requests.id,
+        ref: requests.ref,
+        requestType: requests.requestType,
+        status: requests.status,
+        totalCents: requests.totalCents,
+        ownerName: staff.fullName,
+      })
       .from(requests)
       .innerJoin(staff, eq(staff.id, requests.ownerId))
       .where(eq(requests.batchId, id))
       .orderBy(asc(staff.fullName), asc(requests.ref));
     const trips = await tripsForRequests(tx, claims.map((c) => c.id));
+    const phoneMonths = await phoneMonthsForRequests(tx, claims.map((c) => c.id));
     const approvals = claims.length
       ? await tx
           .select({ requestId: requestEvents.requestId, actorName: requestEvents.actorName, createdAt: requestEvents.createdAt })
@@ -146,14 +160,23 @@ export async function batchDetail(viewer: Viewer, id: string) {
           .orderBy(desc(requestEvents.createdAt))
       : [];
 
-    const byProgram = new Map<string, { code: string; name: string; miles: number; cents: number; trips: number }>();
+    const byProgram = new Map<string, { code: string; name: string; miles: number; cents: number; trips: number; months: number }>();
+    const programRow = (code: string | null, name: string | null) => {
+      const key = code ?? "none";
+      const row = byProgram.get(key) ?? { code: code ?? "None", name: name ?? "No program", miles: 0, cents: 0, trips: 0, months: 0 };
+      byProgram.set(key, row);
+      return row;
+    };
     for (const t of trips) {
-      const key = t.programCode ?? "none";
-      const row = byProgram.get(key) ?? { code: t.programCode ?? "None", name: t.programName ?? "No program", miles: 0, cents: 0, trips: 0 };
+      const row = programRow(t.programCode, t.programName);
       row.miles += Number(t.miles);
       row.cents += t.amountCents;
       row.trips += 1;
-      byProgram.set(key, row);
+    }
+    for (const m of phoneMonths) {
+      const row = programRow(m.programCode, m.programName);
+      row.cents += m.amountCents;
+      row.months += 1;
     }
 
     return {
@@ -163,8 +186,10 @@ export async function batchDetail(viewer: Viewer, id: string) {
         const ts = trips.filter((t) => t.requestId === c.id);
         return {
           ...c,
+          type: asRequestType(c.requestType),
           status: c.status as RequestStatus,
           trips: ts,
+          phoneMonths: phoneMonths.filter((m) => m.requestId === c.id),
           miles: ts.reduce((n, t) => n + Number(t.miles), 0),
           approvedBy: approval?.actorName ?? null,
           approvedAt: approval?.createdAt ?? null,
@@ -221,63 +246,140 @@ export async function markBatchPaid(viewer: Viewer, batchId: string, paidOn: str
 // Reports
 // ---------------------------------------------------------------------------------------------
 
-export type ReportFilters = { from: string; to: string; staffId: string | null; programId: string | null; statuses: RequestStatus[] };
+export type ReportType = "all" | RequestType;
+
+export type ReportFilters = {
+  from: string;
+  to: string;
+  staffId: string | null;
+  programId: string | null;
+  statuses: RequestStatus[];
+  type: ReportType;
+};
 
 export const REPORT_STATUSES: RequestStatus[] = ["submitted", "approved", "batched", "paid"];
 
-/** Trips in claims finance can see, filtered by trip date, employee, program and claim status. */
-export async function mileageReport(viewer: Viewer, f: ReportFilters) {
+export type ReportLine = {
+  id: string;
+  type: RequestType;
+  /** The trip date, or the first day of the month a phone bill pays for. */
+  date: string;
+  ownerName: string;
+  claimRef: number;
+  claimStatus: RequestStatus;
+  programCode: string | null;
+  purpose: string;
+  /** The route for a trip; the month ("July 2026") for a phone bill. */
+  detail: string;
+  miles: number | null;
+  amountCents: number;
+};
+
+/**
+ * Trips and phone bill months in claims finance can see, filtered by date (a trip's date, or the
+ * first day of a phone bill's month), type, employee, program and claim status.
+ */
+export async function reimbursementReport(viewer: Viewer, f: ReportFilters) {
   return withUser(viewer.userId, async (tx) => {
     const people = await tx.select({ id: staff.id, fullName: staff.fullName }).from(staff).orderBy(asc(staff.fullName));
     const programList = await tx.select({ id: programs.id, code: programs.code, name: programs.name }).from(programs).orderBy(asc(programs.code));
     const statuses = f.statuses.filter((s) => REPORT_STATUSES.includes(s));
-    const list = await rows<{
-      id: string;
-      item_date: string;
-      owner_name: string;
-      claim_ref: number;
-      claim_status: RequestStatus;
-      program_code: string | null;
-      purpose: string;
-      from_label: string;
-      to_label: string;
-      round_trip: boolean;
-      miles: string;
-      amount_cents: number;
-    }>(
-      tx,
-      sql`select t.id, t.item_date::text, s.full_name as owner_name, r.ref::int as claim_ref, r.status as claim_status,
-                 p.code as program_code, t.purpose, t.from_label, t.to_label, t.round_trip, t.miles::text, t.amount_cents
-          from public.trip_view t
-          join public.requests r on r.id = t.request_id
-          join public.staff s on s.id = t.owner_id
-          left join public.programs p on p.id = t.program_id
-          where t.item_date between ${f.from}::date and ${f.to}::date
-            and r.status::text = any(${`{${(statuses.length ? statuses : REPORT_STATUSES).join(",")}}`}::text[])
-            ${f.staffId && isUuid(f.staffId) ? sql`and t.owner_id = ${f.staffId}::uuid` : sql``}
-            ${f.programId && isUuid(f.programId) ? sql`and t.program_id = ${f.programId}::uuid` : sql``}
-          order by t.item_date, s.full_name`,
-    );
-    const trips = list.map((r) => ({
-      id: r.id,
-      date: r.item_date,
-      ownerName: r.owner_name,
-      claimRef: r.claim_ref,
-      claimStatus: r.claim_status,
-      programCode: r.program_code,
-      purpose: r.purpose,
-      route: `${r.from_label} → ${r.to_label}${r.round_trip ? " and back" : ""}`,
-      miles: Number(r.miles),
-      amountCents: r.amount_cents,
-    }));
-    const group = (key: (t: (typeof trips)[number]) => string) => {
-      const map = new Map<string, { label: string; trips: number; miles: number; cents: number }>();
-      for (const t of trips) {
-        const k = key(t);
-        const row = map.get(k) ?? { label: k, trips: 0, miles: 0, cents: 0 };
-        row.trips += 1;
-        row.miles += t.miles;
-        row.cents += t.amountCents;
+    const statusList = `{${(statuses.length ? statuses : REPORT_STATUSES).join(",")}}`;
+    const byStaff = f.staffId && isUuid(f.staffId) ? sql`and i.owner_id = ${f.staffId}::uuid` : sql``;
+    const byProgram = f.programId && isUuid(f.programId) ? sql`and i.program_id = ${f.programId}::uuid` : sql``;
+
+    const tripRows =
+      f.type === "phone"
+        ? []
+        : await rows<{
+            id: string;
+            item_date: string;
+            owner_name: string;
+            claim_ref: number;
+            claim_status: RequestStatus;
+            program_code: string | null;
+            purpose: string;
+            from_label: string;
+            to_label: string;
+            round_trip: boolean;
+            miles: string;
+            amount_cents: number;
+          }>(
+            tx,
+            sql`select i.id, i.item_date::text, s.full_name as owner_name, r.ref::int as claim_ref, r.status as claim_status,
+                       p.code as program_code, i.purpose, i.from_label, i.to_label, i.round_trip, i.miles::text, i.amount_cents
+                from public.trip_view i
+                join public.requests r on r.id = i.request_id
+                join public.staff s on s.id = i.owner_id
+                left join public.programs p on p.id = i.program_id
+                where i.item_date between ${f.from}::date and ${f.to}::date
+                  and r.status::text = any(${statusList}::text[])
+                  ${byStaff} ${byProgram}`,
+          );
+    const phoneRows =
+      f.type === "mileage"
+        ? []
+        : await rows<{
+            id: string;
+            month: string;
+            owner_name: string;
+            claim_ref: number;
+            claim_status: RequestStatus;
+            program_code: string | null;
+            purpose: string;
+            amount_cents: number;
+          }>(
+            tx,
+            sql`select i.id, d.month::text as month, s.full_name as owner_name, r.ref::int as claim_ref, r.status as claim_status,
+                       p.code as program_code, i.purpose, i.amount_cents
+                from public.request_items i
+                join public.phone_details d on d.item_id = i.id
+                join public.requests r on r.id = i.request_id
+                join public.staff s on s.id = i.owner_id
+                left join public.programs p on p.id = i.program_id
+                where d.month between ${f.from}::date and ${f.to}::date
+                  and r.status::text = any(${statusList}::text[])
+                  ${byStaff} ${byProgram}`,
+          );
+
+    const lines: ReportLine[] = [
+      ...tripRows.map((r) => ({
+        id: r.id,
+        type: "mileage" as const,
+        date: r.item_date,
+        ownerName: r.owner_name,
+        claimRef: r.claim_ref,
+        claimStatus: r.claim_status,
+        programCode: r.program_code,
+        purpose: r.purpose,
+        detail: `${r.from_label} → ${r.to_label}${r.round_trip ? " and back" : ""}`,
+        miles: Number(r.miles),
+        amountCents: r.amount_cents,
+      })),
+      ...phoneRows.map((r) => ({
+        id: r.id,
+        type: "phone" as const,
+        date: r.month,
+        ownerName: r.owner_name,
+        claimRef: r.claim_ref,
+        claimStatus: r.claim_status,
+        programCode: r.program_code,
+        purpose: r.purpose,
+        detail: formatMonth(r.month),
+        miles: null,
+        amountCents: r.amount_cents,
+      })),
+    ].sort((a, b) => a.date.localeCompare(b.date) || a.ownerName.localeCompare(b.ownerName) || a.type.localeCompare(b.type));
+
+    const group = (key: (l: ReportLine) => string) => {
+      const map = new Map<string, { label: string; trips: number; months: number; miles: number; cents: number }>();
+      for (const l of lines) {
+        const k = key(l);
+        const row = map.get(k) ?? { label: k, trips: 0, months: 0, miles: 0, cents: 0 };
+        if (l.type === "phone") row.months += 1;
+        else row.trips += 1;
+        row.miles += l.miles ?? 0;
+        row.cents += l.amountCents;
         map.set(k, row);
       }
       return [...map.values()].sort((a, b) => a.label.localeCompare(b.label));
@@ -285,10 +387,15 @@ export async function mileageReport(viewer: Viewer, f: ReportFilters) {
     return {
       people,
       programs: programList,
-      trips,
-      byEmployee: group((t) => t.ownerName),
-      byProgram: group((t) => t.programCode ?? "None"),
-      totals: { trips: trips.length, miles: trips.reduce((n, t) => n + t.miles, 0), cents: trips.reduce((n, t) => n + t.amountCents, 0) },
+      lines,
+      byEmployee: group((l) => l.ownerName),
+      byProgram: group((l) => l.programCode ?? "None"),
+      totals: {
+        trips: lines.filter((l) => l.type === "mileage").length,
+        months: lines.filter((l) => l.type === "phone").length,
+        miles: lines.reduce((n, l) => n + (l.miles ?? 0), 0),
+        cents: lines.reduce((n, l) => n + l.amountCents, 0),
+      },
     };
   });
 }

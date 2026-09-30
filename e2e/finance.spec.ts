@@ -6,20 +6,22 @@ test("finance batches approved claims, exports the file, and marks them paid", a
   await signInAs(page, "Hazel Brightwater");
   await page.goto("/finance");
   const ready = page.getByRole("region", { name: /Ready to pay/ });
-  await expect(ready.getByText("Owen Castellano")).toBeVisible();
+  await expect(ready.getByText("Owen Castellano", { exact: true })).toBeVisible();
   await page.getByRole("button", { name: "Create batch" }).click();
   await expect(page).toHaveURL(/\/finance\/batches\/[0-9a-f-]{36}\?done=created/);
   const batchName = (await page.getByRole("heading", { level: 1 }).textContent())!.match(/B-\d+/)![0];
 
-  // Download the trip detail file.
+  // Download the detail file.
   const downloadPromise = page.waitForEvent("download");
-  await page.getByRole("button", { name: "Trip detail (CSV)" }).click();
+  await page.getByRole("button", { name: "Detail (CSV)" }).click();
   const download = await downloadPromise;
   expect(download.suggestedFilename()).toBe(`${batchName}-detail.csv`);
   const csv = readFileSync(await download.path(), "utf8");
-  expect(csv).toContain("Batch,Pay period start,Pay period end,Claim,Employee,Trip date");
+  expect(csv).toContain("Batch,Pay period start,Pay period end,Claim,Employee,Type,Date");
   expect(csv).toContain("Owen Castellano");
   expect(csv).toContain("Workforce board meeting");
+  // Phone bills are paid in the same batches.
+  expect(csv).toContain(",Phone bill,");
 
   // Exporting freezes the batch and unlocks "Mark as paid".
   await expect(page.getByText(/^Downloaded /)).toBeVisible();
@@ -46,14 +48,16 @@ test("a claim can be taken out of an open batch", async ({ page }) => {
   await expect(page.getByRole("region", { name: /Ready to pay/ })).toContainText("Tessa Quill");
 });
 
-test("reports total trips by employee and program, and download as CSV", async ({ page }) => {
+test("reports total trips and phone bills by employee and program, and download as CSV", async ({ page }) => {
   await signInAs(page, "Hazel Brightwater");
-  await page.goto("/finance/reports");
+  // From well back, so the demo's phone bill months are included whatever today's date is.
+  await page.goto("/finance/reports?from=2000-01-01");
   await expect(page.getByRole("region", { name: "By program or grant" })).toContainText("EXL");
   const downloadPromise = page.waitForEvent("download");
-  await page.getByRole("button", { name: "Download trips (CSV)" }).click();
+  await page.getByRole("button", { name: "Download details (CSV)" }).click();
   const csv = readFileSync(await (await downloadPromise).path(), "utf8");
-  expect(csv).toContain("Trip date,Employee,Business purpose");
+  expect(csv).toContain("Type,Date,Employee,Business purpose");
+  expect(csv).toContain("Phone bill,");
 });
 
 test("employees can't open finance pages", async ({ page }) => {

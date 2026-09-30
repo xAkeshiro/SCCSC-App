@@ -87,7 +87,7 @@ export default async function ReviewPage({ searchParams }: PageProps<"/review">)
                 <Link href={`/claims/${e.requestId}`} className="flex items-start gap-3 px-5 py-3 hover:bg-surface">
                   <span className="mt-1">{ICON[e.action]}</span>
                   <span className="min-w-0 flex-1">
-                    <span className="font-semibold">{e.ownerName}</span>, claim {claimNumber(e.ref)} ({formatCents(e.totalCents)}):{" "}
+                    <span className="font-semibold">{e.ownerName}</span>, claim {claimNumber(e.ref, e.type)} ({formatCents(e.totalCents)}):{" "}
                     {e.action} {timeAgo(e.createdAt)}
                     {e.comment ? <span className="block text-ink-500">“{e.comment}”</span> : null}
                   </span>

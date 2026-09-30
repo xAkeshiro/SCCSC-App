@@ -8,10 +8,11 @@ const serif = EB_Garamond({ variable: "--font-garamond", subsets: ["latin"], wei
 
 export const metadata: Metadata = {
   title: {
-    default: "Mileage tracker | SCCSC staff",
-    template: "%s | Mileage tracker",
+    default: "Reimbursement tracker | SCCSC staff",
+    template: "%s | Reimbursement tracker",
   },
-  description: "Log business trips, submit mileage claims and track reimbursement. For Sacramento Chinese Community Service Center staff.",
+  description:
+    "Log business trips, claim your phone bill, and track reimbursement. For Sacramento Chinese Community Service Center staff.",
   robots: { index: false, follow: false },
 };
 

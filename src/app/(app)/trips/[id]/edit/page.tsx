@@ -30,7 +30,7 @@ export default async function EditTripPage({ params, searchParams }: PageProps<"
     return (
       <Container className="max-w-3xl py-8">
         <PageHeader eyebrow="Mileage" title="This trip is locked" />
-        <Notice tone="info" title={claim ? `It's in claim ${claimNumber(claim.ref)}` : undefined}>
+        <Notice tone="info" title={claim ? `It's in claim ${claimNumber(claim.ref, "mileage")}` : undefined}>
           <span className="flex items-center gap-2">
             <Lock aria-hidden className="size-4" />
             Trips can&apos;t change once their claim is sent for approval. If something is wrong, ask your coordinator to return
@@ -40,7 +40,7 @@ export default async function EditTripPage({ params, searchParams }: PageProps<"
         {claim ? (
           <div className="mt-6 flex items-center gap-3">
             <ButtonLink href={`/claims/${claim.id}`} variant="secondary">
-              Open claim {claimNumber(claim.ref)}
+              Open claim {claimNumber(claim.ref, "mileage")}
             </ButtonLink>
             <StatusBadge status={claim.status} />
           </div>
@@ -58,7 +58,7 @@ export default async function EditTripPage({ params, searchParams }: PageProps<"
       <PageHeader
         eyebrow="Mileage"
         title="Edit trip"
-        description={claim ? `This trip is in claim ${claimNumber(claim.ref)}, which was returned to you.` : "This trip hasn't been submitted yet."}
+        description={claim ? `This trip is in claim ${claimNumber(claim.ref, "mileage")}, which was returned to you.` : "This trip hasn't been submitted yet."}
         actions={
           <form action={removeTrip.bind(null, trip.id, returnTo)}>
             <ConfirmButton variant="danger" size="sm" confirm="Delete this trip? This can't be undone.">

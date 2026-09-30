@@ -8,11 +8,13 @@ import { useFormAction } from "@/components/use-form-action";
 import { formatDay, plural } from "@/lib/format";
 import { formatCents } from "@/lib/money";
 import { batchNumber, claimNumber } from "@/lib/requests/status";
+import { REQUEST_TYPES, itemsSummary, type RequestType } from "@/lib/requests/types";
 import { batchClaims, type FinanceState } from "./actions";
 
 export type BuilderClaim = {
   id: string;
   ref: number;
+  type: RequestType;
   ownerName: string;
   totalCents: number;
   tripCount: number;
@@ -63,20 +65,18 @@ export function BatchBuilder({
               checked={picked.has(c.id)}
               onChange={() => toggle(c.id)}
               className="size-5 shrink-0"
-              aria-label={`Include ${c.ownerName}'s claim ${claimNumber(c.ref)}`}
+              aria-label={`Include ${c.ownerName}'s claim ${claimNumber(c.ref, c.type)}`}
             />
             <div className="min-w-0 flex-1">
               <p>
                 <span className="font-semibold">{c.ownerName}</span>{" "}
                 <Link href={`/claims/${c.id}`} className="text-brand-600 hover:underline">
-                  {claimNumber(c.ref)}
-                </Link>
+                  {claimNumber(c.ref, c.type)}
+                </Link>{" "}
+                <span className="text-sm text-ink-500">{REQUEST_TYPES[c.type].label}</span>
               </p>
               <p className="text-sm text-ink-500">
-                {plural(c.tripCount, "trip")}
-                {c.firstDate && c.lastDate
-                  ? ` · ${formatDay(c.firstDate, { weekday: false })}${c.lastDate !== c.firstDate ? ` to ${formatDay(c.lastDate, { weekday: false })}` : ""}`
-                  : ""}
+                {itemsSummary(c.type, c.tripCount, c.firstDate, c.lastDate)}
                 {c.approvedBy ? ` · approved by ${c.approvedBy}` : ""}
               </p>
             </div>
@@ -113,7 +113,7 @@ export function BatchBuilder({
         ) : null}
       </div>
 
-      <div className="card sticky bottom-[5.5rem] z-10 flex items-center justify-between gap-4 px-4 py-3 shadow-[var(--shadow-card)] md:bottom-4 sm:px-5">
+      <div className="card sticky bottom-[5.5rem] z-10 flex items-center justify-between gap-4 px-4 py-3 shadow-[var(--shadow-card)] lg:bottom-4 sm:px-5">
         <div aria-live="polite">
           <p className="text-sm text-ink-500">
             {chosen.length} of {plural(claims.length, "claim")}

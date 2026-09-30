@@ -4,7 +4,7 @@
  * Design tokens, taken from the live sccsc.org landing page (Elementor kit):
  *   red #D0112B (hover #A50E22), text #1D1D1D, muted #6B6B6B, white, light gray sections,
  *   Onest for headings, Instrument Sans for text, 8-12px corners, soft card shadows.
- * Plus the brief's light red tint #F3C4CB and EB Garamond for the "mileage tracker" wordmark.
+ * Plus the brief's light red tint #F3C4CB and EB Garamond for the "reimbursement tracker" wordmark.
  */
 @theme {
   --color-brand-50: #fdecee;

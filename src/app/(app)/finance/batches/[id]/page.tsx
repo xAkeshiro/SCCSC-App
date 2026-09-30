@@ -9,6 +9,7 @@ import { requireRole } from "@/lib/auth/viewer";
 import { batchDetail } from "@/lib/data/finance";
 import { formatDateTime, formatDay, plural, todayIso } from "@/lib/format";
 import { formatCents, formatMiles } from "@/lib/money";
+import { formatMonths } from "@/lib/requests/phone";
 import { batchNumber, claimNumber } from "@/lib/requests/status";
 import { unbatchClaim } from "../../actions";
 import { ExportButtons, MarkPaidForm } from "./batch-actions";
@@ -109,10 +110,12 @@ export default async function BatchPage({ params, searchParams }: PageProps<"/fi
                       <td className="px-5 py-3 font-semibold">{c.ownerName}</td>
                       <td className="px-5 py-3">
                         <Link href={`/claims/${c.id}`} className="text-brand-600 hover:underline">
-                          {claimNumber(c.ref)}
+                          {claimNumber(c.ref, c.type)}
                         </Link>
                         <span className="block text-sm text-ink-500">
-                          {plural(c.trips.length, "trip")}, {formatMiles(c.miles)}
+                          {c.type === "phone"
+                            ? `Phone bill, ${formatMonths(c.phoneMonths.map((m) => m.month))}`
+                            : `${plural(c.trips.length, "trip")}, ${formatMiles(c.miles)}`}
                         </span>
                       </td>
                       <td className="px-5 py-3 text-sm">{c.approvedBy ?? "—"}</td>
@@ -153,7 +156,9 @@ export default async function BatchPage({ params, searchParams }: PageProps<"/fi
                   <span>
                     <span className="font-semibold">{p.code}</span> <span className="text-ink-500">{p.name}</span>
                     <span className="block text-sm text-ink-500">
-                      {plural(p.trips, "trip")}, {formatMiles(p.miles)}
+                      {[p.trips ? `${plural(p.trips, "trip")}, ${formatMiles(p.miles)}` : null, p.months ? `${plural(p.months, "phone month")}` : null]
+                        .filter(Boolean)
+                        .join(" · ")}
                     </span>
                   </span>
                   <span className="font-semibold">{formatCents(p.cents)}</span>
