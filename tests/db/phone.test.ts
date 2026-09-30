@@ -1,5 +1,6 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { userMessage } from "@/db/with-user";
+import { fakeBillPdf } from "@/db/fake-bill";
 import { claimPhoneMonths, phoneOverviewFor, resubmitPhoneMonths } from "@/lib/data/phone";
 import { UserError } from "@/lib/errors";
 import { as, createTestDb, queryAs, rows, sql, staffIdOf, type TestDb } from "../support/db";
@@ -19,8 +20,10 @@ afterAll(async () => {
   await t.close();
 });
 
-const claim = (months: string[], person: "hazel" | "sam" = "hazel") =>
-  as(t, person, (tx) => claimPhoneMonths(tx, staffIdOf(person), { months, programId: adm, note: "" }, TODAY));
+const bill = (name = "bill.pdf") => ({ name, bytes: fakeBillPdf(["SAMPLE WIRELESS - FAKE TEST BILL"]) });
+
+const claim = (months: string[], person: "hazel" | "sam" = "hazel", files = [bill()]) =>
+  as(t, person, (tx) => claimPhoneMonths(tx, staffIdOf(person), { months, programId: adm, note: "", files }, TODAY));
 
 const failure = (p: Promise<unknown>) =>
   p.then(
@@ -131,5 +134,71 @@ describe("claiming a phone bill", () => {
     const id = await claim(["2026-07-01"]);
     await as(t, "hazel", (tx) => tx.execute(sql`select app.withdraw_claim(${id}::uuid)`));
     expect(await failure(as(t, "hazel", (tx) => resubmitPhoneMonths(tx, staffIdOf("hazel"), id, [], "")))).toBe("Keep at least one month.");
+  });
+});
+
+describe("the phone bill itself", () => {
+  const attachmentsOf = (person: "hazel" | "owen" | "tessa", requestId: string) =>
+    queryAs<{ id: string; file_name: string; content_type: string }>(
+      t,
+      person,
+      sql`select id, file_name, content_type from public.request_attachments where request_id = ${requestId}::uuid order by created_at`,
+    );
+  let claimId: string;
+
+  it("a claim needs a photo or PDF of the bill, and only a photo or PDF will do", async () => {
+    expect(await failure(claim(["2026-08-01"], "hazel", []))).toBe("Please add a photo or PDF of your phone bill.");
+    const notABill = { name: "bill.html", bytes: new TextEncoder().encode("<html><script>alert(1)</script></html>") };
+    expect(await failure(claim(["2026-08-01"], "hazel", [notABill]))).toBe(
+      '"bill.html" isn\'t a photo or PDF. Please add a photo (JPG or PNG) or a PDF of the bill.',
+    );
+  });
+
+  it("is saved with the claim, typed by its contents", async () => {
+    claimId = await claim(["2026-08-01"], "hazel", [{ name: "C:\\Users\\me\\My Bill (Aug)", bytes: bill().bytes }]);
+    expect(await attachmentsOf("hazel", claimId)).toEqual([
+      expect.objectContaining({ file_name: "My Bill (Aug).pdf", content_type: "application/pdf" }),
+    ]);
+  });
+
+  it("only people who can see the claim can see the bill", async () => {
+    expect(await attachmentsOf("tessa", claimId)).toHaveLength(0);
+    expect(await attachmentsOf("owen", claimId)).toHaveLength(1);
+  });
+
+  it("a sent claim's bill is locked, even for owner-level code", async () => {
+    const removed = await queryAs(t, "hazel", sql`delete from public.request_attachments where request_id = ${claimId}::uuid returning id`);
+    expect(removed).toHaveLength(0);
+    await expect(t.db.execute(sql`delete from public.request_attachments where request_id = ${claimId}::uuid`)).rejects.toThrow();
+  });
+
+  it("the database refuses a phone bill claim sent without a bill", async () => {
+    const sneaky = as(t, "sam", async (tx) => {
+      const [item] = await rows<{ id: string }>(
+        tx,
+        sql`insert into public.request_items (request_type, owner_id, item_date, purpose, amount_cents)
+            values ('phone', ${staffIdOf("sam")}::uuid, '2026-10-01', 'No bill', 4500) returning id`,
+      );
+      await tx.execute(
+        sql`insert into public.phone_details (item_id, owner_id, month, rate_cents) values (${item.id}::uuid, ${staffIdOf("sam")}::uuid, '2026-10-01', 4500)`,
+      );
+      await tx.execute(sql`select app.submit_claim(array[${item.id}::uuid], '')`);
+    });
+    await expect(sneaky).rejects.toThrow();
+    expect(await queryAs(t, "sam", sql`select id from public.requests where owner_id = ${staffIdOf("sam")}::uuid`)).toHaveLength(0);
+  });
+
+  it("a returned claim can swap its bill for a clearer one", async () => {
+    await as(t, "owen", (tx) => tx.execute(sql`select app.decide_claim(${claimId}::uuid, 'return', 'The bill is too blurry to read.')`));
+    const [old] = await attachmentsOf("hazel", claimId);
+    const items = await queryAs<{ id: string }>(t, "hazel", sql`select id from public.request_items where request_id = ${claimId}::uuid`);
+    // Taking away the only bill without adding one isn't allowed.
+    expect(
+      await failure(as(t, "hazel", (tx) => resubmitPhoneMonths(tx, staffIdOf("hazel"), claimId, [items[0].id], "", { add: [], remove: [old.id] }))),
+    ).toBe("Please add a photo or PDF of your phone bill.");
+    await as(t, "hazel", (tx) =>
+      resubmitPhoneMonths(tx, staffIdOf("hazel"), claimId, [items[0].id], "Clearer copy", { add: [bill("august-clear.pdf")], remove: [old.id] }),
+    );
+    expect((await attachmentsOf("hazel", claimId)).map((a) => a.file_name)).toEqual(["august-clear.pdf"]);
   });
 });

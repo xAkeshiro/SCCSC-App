@@ -2,6 +2,7 @@ import { ArrowLeft, PencilLine, Printer, Undo2 } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { AttachmentList } from "@/components/attachment-list";
 import { ConfirmButton } from "@/components/confirm-button";
 import { StatusBadge } from "@/components/status-badge";
 import { Timeline } from "@/components/timeline";
@@ -122,6 +123,14 @@ export default async function ClaimPage({ params, searchParams }: PageProps<"/cl
                 ))}
               </ul>
             ) : null}
+            {claim.attachments.length > 0 ? (
+              <div className="mt-6">
+                <h3 className="mb-2 text-lg">{isPhone ? "The bill" : "Files"}</h3>
+                <AttachmentList files={claim.attachments} />
+              </div>
+            ) : isPhone ? (
+              <p className="mt-4 text-ink-500">No copy of the bill was sent with this claim.</p>
+            ) : null}
             <ul className="mt-4 grid gap-3">
               {claim.trips.map((trip) => (
                 <li key={trip.id} className="card p-5">
@@ -159,7 +168,8 @@ export default async function ClaimPage({ params, searchParams }: PageProps<"/cl
                 {claim.status === "returned" ? "Fix and resubmit" : "Send it again"}
               </h2>
               <p className="mt-1 mb-4 text-ink-500">
-                Untick any month that shouldn&apos;t be in this claim. Months you take out can be claimed again later.
+                Untick any month that shouldn&apos;t be in this claim (you can claim it again later), and add a clearer
+                copy of the bill if you were asked to.
               </p>
               <PhoneMonthPicker
                 groups={[
@@ -171,6 +181,7 @@ export default async function ClaimPage({ params, searchParams }: PageProps<"/cl
                 field="item"
                 action={resubmitPhone.bind(null, claim.id)}
                 submitLabel="Resubmit claim"
+                existingFiles={claim.attachments}
               />
             </section>
           ) : null}

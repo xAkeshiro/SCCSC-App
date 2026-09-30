@@ -10,7 +10,12 @@ import { useActionState, useEffect, useRef, useTransition, type FormEvent } from
  * with validation errors would lose what the person chose. Submitting this way skips the reset.
  * The clicked button's name/value (e.g. intent=another) is still sent.
  */
-export function useFormAction<State>(action: (prev: State, formData: FormData) => Promise<State>, initial: State) {
+export function useFormAction<State>(
+  action: (prev: State, formData: FormData) => Promise<State>,
+  initial: State,
+  /** Adds to the form data before it's sent (for example files held in state). */
+  extend?: (formData: FormData) => void,
+) {
   const [state, dispatch, pending] = useActionState<State, FormData>(
     action as (prev: Awaited<State>, formData: FormData) => Promise<State>,
     initial as Awaited<State>,
@@ -34,6 +39,7 @@ export function useFormAction<State>(action: (prev: State, formData: FormData) =
     formRef.current = event.currentTarget;
     const submitter = (event.nativeEvent as SubmitEvent).submitter as HTMLButtonElement | null;
     const formData = new FormData(event.currentTarget, submitter);
+    extend?.(formData);
     startTransition(() => dispatch(formData));
   };
   return [state, onSubmit, pending || transitioning] as const;

@@ -4,6 +4,7 @@ import { PrintSheet } from "@/components/print-sheet";
 import { requireViewer } from "@/lib/auth/viewer";
 import { claimsForPrint } from "@/lib/data/claims";
 import { formatDateTime, formatDay } from "@/lib/format";
+import { formatBytes } from "@/lib/files";
 import { formatCents, formatRate } from "@/lib/money";
 import { formatMonth } from "@/lib/requests/phone";
 import { routeText } from "@/lib/requests/pickable";
@@ -117,6 +118,13 @@ export default async function PrintClaimPage({ params }: PageProps<"/print/claim
         </tfoot>
       </table>
       )}
+
+      {claim.attachments.length > 0 ? (
+        <p>
+          <span className="font-semibold">{isPhone ? "Copy of the bill" : "Files"}:</span>{" "}
+          {claim.attachments.map((f) => `${f.fileName} (${formatBytes(f.sizeBytes)})`).join(", ")}. Kept with the claim in the app.
+        </p>
+      ) : null}
 
       <div className="grid grid-cols-2 gap-6">
         <div className="rounded-[var(--radius-btn)] border border-ink-100 p-3">

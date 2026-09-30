@@ -111,9 +111,13 @@ mileage.
 - It's claimed **every two months, in the even months** (February, April, June, August, October,
   December), so a normal claim covers two months: **$90**. The months per claim is a setting.
 - The employee opens **Phone bill**, checks the months (both are ticked; untick one, for example
-  before they started), picks the program, confirms, and sends it. Their coordinator approves it
-  like a mileage claim, and finance pays it in the same batches.
-- Each person can claim a month only once. A returned claim can drop a month and be resubmitted.
+  before they started), **adds a photo or PDF of the bill** (required, confirmed 2026-09-30),
+  picks the program, confirms, and sends it. Their coordinator can open the bill, approves it like
+  a mileage claim, and finance pays it in the same batches.
+- Photos are made smaller on the phone before they're sent (a readable ~2000px JPEG). Up to 5 files
+  per claim, 4 MB in all. Only photos (JPG, PNG, WebP, iPhone HEIC) and PDFs are accepted.
+- Each person can claim a month only once. A returned claim can drop a month, or swap the bill for
+  a clearer copy, and be resubmitted.
 - Missed a period? The one before the latest can still be claimed (a setting).
 
 ## 5. Future phases (ideas, not committed)
@@ -160,7 +164,8 @@ This is a starting point for discussion, not a final schema.
 - Mobile first. Works well on older phones and slow connections.
 - Accessible (WCAG 2.1 AA): real buttons and labels, good contrast, large touch targets.
 - Simple language in the UI. Staff have a wide range of tech comfort.
-- Privacy: trip addresses may include home addresses. Limit who can see them.
+- Privacy: trip addresses may include home addresses, and phone bills can show personal details
+  (numbers called, home address). Limit who can see them.
 - Row Level Security on every table.
 - Fake data only in development and demos.
 
@@ -193,8 +198,9 @@ This is a starting point for discussion, not a final schema.
 17. New: sending sign-in emails to staff (not just the demo inbox) needs a domain verified with the
     email provider, for example `staff.sccsc.org`. Who manages sccsc.org's DNS?
 18. New (phone bills): is every staff member eligible, or only some roles or programs?
-19. New (phone bills): does finance need a copy of the bill, or is the $45 a flat allowance with no
-    receipt? (Built as a flat allowance, no upload.)
+19. ~~New (phone bills): does finance need a copy of the bill?~~ **Decided:** yes, a photo or PDF
+    of the bill is required with every phone bill claim. Still open: must the bill show the
+    employee's name and the months claimed, and how long are bill copies kept (see question 8)?
 20. New (phone bills): how late can a missed period be claimed? (A setting: one period back.)
 21. New (phone bills): is the confirmation wording right? ("I confirm I used my own phone for SCCSC
     work during these months.") And which program should phone bills be charged to? (The

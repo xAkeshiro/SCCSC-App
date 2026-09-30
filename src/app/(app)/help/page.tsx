@@ -27,7 +27,7 @@ const FAQ: { q: string; a: string }[] = [
   },
   {
     q: "How does the phone bill work?",
-    a: "SCCSC pays a set amount each month for using your own phone for work. The Phone bill page shows the amount and which months are ready to claim (every couple of months): check them and send the claim. It goes to your coordinator like a mileage claim, and each month can only be claimed once.",
+    a: "SCCSC pays a set amount each month for using your own phone for work. The Phone bill page shows the amount and which months are ready to claim (every couple of months): check them, add a photo or PDF of your bill, and send the claim. It goes to your coordinator like a mileage claim, and each month can only be claimed once.",
   },
   {
     q: "Who can see my trips?",

@@ -72,7 +72,7 @@ export default async function PhoneBillPage() {
             <p className="mt-1 mb-4 text-ink-500">
               {latestDone
                 ? `You've claimed ${o.periods[0].period.label}.`
-                : "Untick any month you didn't use your phone for work (for example, before you started)."}
+                : "Add a photo or PDF of your bill. Untick any month you didn't use your phone for work (for example, before you started)."}
             </p>
             {anyToClaim ? (
               <PhoneMonthPicker

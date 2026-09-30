@@ -52,7 +52,15 @@ Everything is a **request** (a claim) of a **request type**, made of **request i
   claiming): a flat monthly rate from `rates`, claimed in periods of `phone_months_per_claim`
   months from January (2: Jan–Feb claimed from Feb 1, and so on). Each month is one item; a claim
   is created and submitted in one step. `phone_details` is unique per person and month, so a month
-  can't be claimed twice.
+  can't be claimed twice. A photo or PDF of the bill is required: `request_types.config` has
+  `"attachments": "required"` for phone, and a deferred trigger refuses to commit a submitted claim
+  of that type with no file.
+- **Files** (`request_attachments`, `src/lib/files.ts`, `src/lib/data/attachments.ts`): generic, so
+  later receipt types can use them. The type is worked out from the file's first bytes (photos and
+  PDFs only, never SVG or HTML). Big photos are shrunk in the browser before upload
+  (`src/components/bill-picker.tsx`); an upload stays under 4 MB (Vercel caps a request at 4.5 MB,
+  and `serverActions.bodySizeLimit` is set to match). Files are fetched through a server action
+  (like the CSV exports) so, in the demo, they come from the same server as the page.
 - Status flow and approvals (`app.*` functions), history, batching and payment are shared by all
   types.
 - No form builder yet (the brief says to wait until several types exist).
@@ -75,6 +83,7 @@ Everything is a **request** (a claim) of a **request type**, made of **request i
 | `request_items` | A trip: date, purpose, program, notes, amount in cents. `request_id` is empty until it is submitted. |
 | `mileage_details` | Trip route (from, stops, to), round trip, estimated and claimed miles, override reason, and the **rate it was calculated with**. |
 | `phone_details` | The month a phone bill item pays for and the rate used. One per person and month. |
+| `request_attachments` | Files sent with a claim (a photo or PDF of a phone bill): name, type, size and the bytes. Stored in Postgres for now. |
 | `request_events` | The history: who did what, when, from which status to which, and their comment. Append-only. |
 | `batches` | A pay-period batch: claims, total, exported and paid dates. |
 | `trip_view` (view) | Trips with their details, with home addresses hidden from anyone but the owner. |
@@ -108,6 +117,9 @@ Who sees what:
 - **Locks.** Trips can change only while unsubmitted or while their claim is a draft or returned.
   RLS hides locked trips from edits, and a trigger stops even owner-level code.
 - **History is append-only.** A trigger rejects any update or delete on `request_events`.
+- **Files** have exactly the claim's visibility (a phone bill can show personal details). The owner
+  adds them while the claim is a draft or returned, or in the same transaction that sends it
+  (`app.submitted_in_this_transaction`); after that they're locked like the trips.
 - `withSystem` (owner rights, no RLS) is used only by the sign-in flow, before someone is a
   known staff member, and by the seed. It plays the role of Supabase's service key.
 
@@ -175,3 +187,5 @@ replace it, with results cached.
    providers in `src/lib/auth/` for Supabase's `signInWithOtp` / `verifyOtp`, and add the second
    email or phone to a person's account through Supabase's admin API.
 4. Import the real roster through the admin screen (M6), never the seed.
+5. Decide where bill files live: keep them in Postgres (fine while they're small and few), or move
+   them to a private Supabase Storage bucket with the same visibility rules.

@@ -24,6 +24,7 @@ import {
 } from "@/lib/requests/phone";
 import type { RequestStatus } from "@/lib/requests/status";
 import { readSettings } from "@/lib/settings";
+import { checkFiles, countAttachments, removeAttachments, saveAttachments, type IncomingFile } from "./attachments";
 
 export const REQUEST_TYPE = "phone";
 
@@ -160,7 +161,15 @@ export async function phoneBillDue(viewer: Viewer, today = todayIso()) {
   };
 }
 
-export type PhoneClaimInput = { months: string[]; programId: string | null; note: string };
+export type PhoneClaimInput = {
+  months: string[];
+  programId: string | null;
+  note: string;
+  /** A photo or PDF of the bill (at least one). */
+  files: IncomingFile[];
+};
+
+const NEEDS_BILL = "Please add a photo or PDF of your phone bill.";
 
 /** Claims the chosen months as one phone bill claim, sent for approval. Returns the claim id. */
 export async function claimPhoneBill(viewer: Viewer, input: PhoneClaimInput, today = todayIso()): Promise<string> {
@@ -171,6 +180,8 @@ export async function claimPhoneBill(viewer: Viewer, input: PhoneClaimInput, tod
 export async function claimPhoneMonths(tx: Tx, staffId: string, input: PhoneClaimInput, today: string): Promise<string> {
   const months = [...new Set(input.months)].filter(isMonth).sort();
   if (months.length === 0) throw new UserError("Choose at least one month.");
+  const files = checkFiles(input.files);
+  if (files.length === 0) throw new UserError(NEEDS_BILL);
   const settings = await readSettings(tx);
   const open = new Set(claimablePeriods(today, settings.phoneMonthsPerClaim, settings.phonePeriodsBack).flatMap((p) => p.months));
   const closed = months.find((m) => !open.has(m));
@@ -205,19 +216,31 @@ export async function claimPhoneMonths(tx: Tx, staffId: string, input: PhoneClai
     ids.push(item.id);
   }
   const [{ id }] = await rows<{ id: string }>(tx, sql`select app.submit_claim(${uuidArray(ids)}, ${input.note}) as id`);
+  await saveAttachments(tx, staffId, id, files);
   return id;
 }
 
+/** Files to add to, and remove from, a claim being resubmitted. */
+export type BillChanges = { add: IncomingFile[]; remove: string[] };
+
 /**
- * Sends a draft or returned phone bill claim again, keeping the chosen months. Months left out are
- * removed (so they can be claimed later), since a month can't sit outside a claim.
+ * Sends a draft or returned phone bill claim again, keeping the chosen months and bill files.
+ * Months left out are removed (so they can be claimed later), since a month can't sit outside a
+ * claim. It must still have at least one photo or PDF of the bill.
  */
-export async function resubmitPhoneClaim(viewer: Viewer, requestId: string, keepIds: string[], note: string) {
-  await withUser(viewer.userId, (tx) => resubmitPhoneMonths(tx, viewer.staffId, requestId, keepIds, note));
+export async function resubmitPhoneClaim(viewer: Viewer, requestId: string, keepIds: string[], note: string, bills: BillChanges) {
+  await withUser(viewer.userId, (tx) => resubmitPhoneMonths(tx, viewer.staffId, requestId, keepIds, note, bills));
 }
 
 /** As resubmitPhoneClaim, inside a transaction running as the signed-in staff member `staffId`. */
-export async function resubmitPhoneMonths(tx: Tx, staffId: string, requestId: string, keepIds: string[], note: string) {
+export async function resubmitPhoneMonths(
+  tx: Tx,
+  staffId: string,
+  requestId: string,
+  keepIds: string[],
+  note: string,
+  bills: BillChanges = { add: [], remove: [] },
+) {
   if (!isUuid(requestId)) throw new UserError("Claim not found.");
   const [claim] = await tx.select().from(requests).where(eq(requests.id, requestId)).limit(1);
   if (!claim || claim.ownerId !== staffId || claim.requestType !== REQUEST_TYPE) throw new UserError("Claim not found.");
@@ -225,6 +248,10 @@ export async function resubmitPhoneMonths(tx: Tx, staffId: string, requestId: st
   const items = await tx.select({ id: requestItems.id }).from(requestItems).where(eq(requestItems.requestId, requestId));
   const keep = items.map((i) => i.id).filter((id) => keepIds.includes(id));
   if (keep.length === 0) throw new UserError("Keep at least one month.");
+  await removeAttachments(tx, requestId, bills.remove);
+  const added = checkFiles(bills.add, await countAttachments(tx, requestId));
+  await saveAttachments(tx, staffId, requestId, added);
+  if ((await countAttachments(tx, requestId)) === 0) throw new UserError(NEEDS_BILL);
   const remove = items.map((i) => i.id).filter((id) => !keep.includes(id));
   if (remove.length) await tx.delete(requestItems).where(inArray(requestItems.id, remove));
   await tx.execute(sql`select app.resubmit_claim(${requestId}::uuid, ${uuidArray(keep)}, ${note})`);

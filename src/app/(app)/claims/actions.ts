@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { requireRole, requireViewer } from "@/lib/auth/viewer";
+import { attachmentFile } from "@/lib/data/attachments";
 import { decideClaim, resubmitClaim, submitClaim, withdrawClaim, type Decision } from "@/lib/data/claims";
 import { errorMessage } from "@/lib/errors";
 
@@ -67,4 +68,20 @@ export async function decide(requestId: string, _prev: ClaimFormState, formData:
   revalidatePath("/", "layout");
   const next = formData.get("next") === "queue" ? "/review" : `/claims/${requestId}`;
   redirect(`${next}?done=${decision === "approve" ? "approved" : decision === "return" ? "returned" : "denied"}`);
+}
+
+export type AttachmentDownload =
+  | { ok: true; fileName: string; contentType: string; base64: string }
+  | { ok: false; error: string };
+
+/**
+ * One file from a claim, for viewing or saving in the browser. A server action rather than a
+ * route, so on the demo it reaches the same server (and in-memory database) as the page.
+ * RLS decides whether the viewer may see it.
+ */
+export async function fetchAttachment(id: string): Promise<AttachmentDownload> {
+  const viewer = await requireViewer();
+  const file = await attachmentFile(viewer, String(id).slice(0, 64));
+  if (!file) return { ok: false, error: "That file isn't available." };
+  return { ok: true, fileName: file.fileName, contentType: file.contentType, base64: Buffer.from(file.data).toString("base64") };
 }

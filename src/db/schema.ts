@@ -15,6 +15,7 @@ import {
   bigint,
   boolean,
   check,
+  customType,
   date,
   doublePrecision,
   foreignKey,
@@ -374,6 +375,42 @@ export const phoneDetails = pgTable(
     }).onDelete("cascade"),
     unique("phone_details_owner_month_unique").on(t.ownerId, t.month),
     check("phone_details_first_of_month", sql`extract(day from ${t.month}) = 1`),
+  ],
+);
+
+/** Raw file bytes. PGlite and postgres.js both hand these back as Uint8Array (Buffer). */
+const bytea = customType<{ data: Uint8Array; driverData: Uint8Array }>({ dataType: () => "bytea" });
+
+/**
+ * Files sent with a claim, such as a photo or PDF of a phone bill. Kept in the database for the
+ * demo (moving to Supabase Storage is an option later). Visible to whoever can see the claim.
+ * A phone bill claim can't be sent without one (checked by a trigger in drizzle/0005).
+ */
+export const requestAttachments = pgTable(
+  "request_attachments",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    requestId: uuid("request_id")
+      .notNull()
+      .references(() => requests.id, { onDelete: "cascade" }),
+    /** Who added it (the claim's owner). */
+    ownerId: uuid("owner_id")
+      .notNull()
+      .references(() => staff.id),
+    fileName: text("file_name").notNull(),
+    /** Worked out from the file's contents, not what the browser said. */
+    contentType: text("content_type").notNull(),
+    sizeBytes: integer("size_bytes").notNull(),
+    data: bytea("data").notNull(),
+    createdAt: createdAt(),
+  },
+  (t) => [
+    index("request_attachments_request_idx").on(t.requestId),
+    check("request_attachments_size", sql`${t.sizeBytes} > 0 and ${t.sizeBytes} <= 5242880 and ${t.sizeBytes} = octet_length(${t.data})`),
+    check(
+      "request_attachments_type",
+      sql`${t.contentType} in ('image/jpeg', 'image/png', 'image/webp', 'image/heic', 'application/pdf')`,
+    ),
   ],
 );
 

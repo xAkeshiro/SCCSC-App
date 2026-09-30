@@ -9,6 +9,7 @@ import { hasRole, type Viewer } from "@/lib/auth/viewer";
 import { UserError } from "@/lib/errors";
 import type { RequestAction, RequestStatus } from "@/lib/requests/status";
 import { asRequestType, type RequestType } from "@/lib/requests/types";
+import { attachmentsFor, type AttachmentMeta } from "./attachments";
 import { phoneMonthsForRequests, type PhoneMonthRecord } from "./phone";
 import { selectTrips, tripsForRequests, type TripRecord } from "./trips";
 
@@ -90,6 +91,8 @@ export type ClaimDetail = {
   trips: TripRecord[];
   /** Phone bill claims: the months. */
   phoneMonths: PhoneMonthRecord[];
+  /** Files sent with it (a photo or PDF of the phone bill). */
+  attachments: AttachmentMeta[];
   events: ClaimEvent[];
   /** Latest comment from whoever returned or denied it. */
   lastDecision: ClaimEvent | null;
@@ -124,6 +127,7 @@ export async function claimDetail(viewer: Viewer, id: string): Promise<ClaimDeta
       : [];
     const trips = await tripsForRequests(tx, [claim.id]);
     const phoneMonths = await phoneMonthsForRequests(tx, [claim.id]);
+    const attachments = await attachmentsFor(tx, [claim.id]);
     const events = (
       await tx.select().from(requestEvents).where(eq(requestEvents.requestId, claim.id)).orderBy(asc(requestEvents.createdAt), asc(requestEvents.id))
     ).map((e) => ({
@@ -152,6 +156,7 @@ export async function claimDetail(viewer: Viewer, id: string): Promise<ClaimDeta
       batch: batch ?? null,
       trips,
       phoneMonths,
+      attachments,
       events,
       lastDecision: [...events].reverse().find((e) => e.action === "returned" || e.action === "denied") ?? null,
       can: {
@@ -245,12 +250,14 @@ export async function claimsForPrint(viewer: Viewer, ids: string[]) {
       .orderBy(asc(staff.fullName), asc(requests.ref));
     const trips = await tripsForRequests(tx, list.map((c) => c.id));
     const phoneMonths = await phoneMonthsForRequests(tx, list.map((c) => c.id));
+    const attachments = await attachmentsFor(tx, list.map((c) => c.id));
     const events = await tx.select().from(requestEvents).where(inArray(requestEvents.requestId, list.map((c) => c.id))).orderBy(desc(requestEvents.createdAt));
     return list.map((c) => ({
       ...c,
       type: asRequestType(c.requestType),
       trips: trips.filter((t) => t.requestId === c.id),
       phoneMonths: phoneMonths.filter((m) => m.requestId === c.id),
+      attachments: attachments.filter((a) => a.requestId === c.id),
       approval: events.find((e) => e.requestId === c.id && e.action === "approved") ?? null,
       events: events.filter((e) => e.requestId === c.id).reverse(),
     }));

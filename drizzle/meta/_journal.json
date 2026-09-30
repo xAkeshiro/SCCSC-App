@@ -36,6 +36,20 @@
       "when": 1790793374287,
       "tag": "0004_phone_security",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1790804009638,
+      "tag": "0005_attachments",
+      "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1790804018271,
+      "tag": "0006_attachment_security",
+      "breakpoints": true
     }
   ]
 }

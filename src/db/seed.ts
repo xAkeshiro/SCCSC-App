@@ -11,7 +11,8 @@ import { sql } from "drizzle-orm";
 import { demoEstimateMiles } from "@/lib/distance";
 import { mileageAmountCents, normalizeMiles } from "@/lib/money";
 import { todayIso } from "@/lib/format";
-import { addMonths, formatMonth, latestOpenPeriod, periodOf, phoneAmountCents, type Period } from "@/lib/requests/phone";
+import { addMonths, formatMonth, formatMonths, latestOpenPeriod, periodOf, phoneAmountCents, type Period } from "@/lib/requests/phone";
+import { fakeBillPdf } from "./fake-bill";
 import type { Database, Tx } from "./index";
 import * as s from "./schema";
 
@@ -535,6 +536,24 @@ async function seed(tx: Tx) {
         .returning();
       await tx.insert(s.phoneDetails).values({ itemId: item.id, ownerId: DEMO[owner].staffId!, month, rateId: phoneRate.id, rateCents: phoneRate.rateCents });
     }
+    // Phone bill claims need a copy of the bill: a made-up one.
+    const bill = fakeBillPdf([
+      "SAMPLE WIRELESS - FAKE DEMO BILL",
+      `Account holder: ${person.name}`,
+      `Billing period: ${formatMonths(months)}`,
+      "Wireless service and data: $68.40 a month",
+      "Not a real bill. Made up for the SCCSC demo.",
+    ]);
+    await tx.insert(s.requestAttachments).values({
+      id: nextId(),
+      requestId,
+      ownerId: DEMO[owner].staffId!,
+      fileName: `phone-bill-${months[0].slice(0, 7)}.pdf`,
+      contentType: "application/pdf",
+      sizeBytes: bill.length,
+      data: bill,
+      createdAt: tsDaysAgo(daysAgo, 17),
+    });
   }
 
   // Claim periods are calendar months, so they're worked out from today (2 months per claim). If

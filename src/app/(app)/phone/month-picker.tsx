@@ -1,7 +1,8 @@
 "use client";
 
 import { Send } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { BillPicker, type ExistingFile, type PickedFile } from "@/components/bill-picker";
 import { Button, Field, Notice, cx } from "@/components/ui";
 import { useFormAction } from "@/components/use-form-action";
 import { formatCents } from "@/lib/money";
@@ -20,8 +21,9 @@ export type PickableMonth = {
 };
 
 /**
- * Tick the months of a phone bill to claim, then confirm. Used for a new claim (with the program)
- * and to resubmit a returned one (untick a month to take it out).
+ * Tick the months of a phone bill to claim, add a photo or PDF of the bill, then confirm. Used for
+ * a new claim (with the program) and to resubmit a returned one (untick a month to take it out,
+ * or swap the bill).
  */
 export function PhoneMonthPicker({
   groups,
@@ -30,6 +32,7 @@ export function PhoneMonthPicker({
   submitLabel,
   programs,
   defaultProgramId,
+  existingFiles,
 }: {
   groups: { title: string | null; months: PickableMonth[] }[];
   field: "month" | "item";
@@ -38,8 +41,22 @@ export function PhoneMonthPicker({
   /** New claims only: the program or grant it's charged to. */
   programs?: { id: string; code: string; name: string }[];
   defaultProgramId?: string | null;
+  /** Resubmitting: the bill files already on the claim. */
+  existingFiles?: ExistingFile[];
 }) {
-  const [state, onSubmit, pending] = useFormAction<PickerState>(action, {});
+  const [picked, setPicked] = useState<PickedFile[]>([]);
+  const [removed, setRemoved] = useState<Set<string>>(() => new Set());
+  // The chosen files live in state (photos are shrunk first), so they're added when the form is sent.
+  const [state, onSubmit, pending] = useFormAction<PickerState>(action, {}, (formData) => {
+    for (const p of picked) formData.append("bill", p.file, p.file.name);
+    for (const id of removed) formData.append("removeFile", id);
+  });
+  // Free the photo previews when leaving the page.
+  const previews = useRef<PickedFile[]>([]);
+  useEffect(() => {
+    previews.current = picked;
+  }, [picked]);
+  useEffect(() => () => previews.current.forEach((p) => p.previewUrl && URL.revokeObjectURL(p.previewUrl)), []);
   const all = groups.flatMap((g) => g.months);
   const [checked, setChecked] = useState<Set<string>>(() => new Set(all.filter((m) => m.checked && !m.unavailable).map((m) => m.value)));
   const [programId, setProgramId] = useState(defaultProgramId ?? "");
@@ -98,6 +115,7 @@ export function PhoneMonthPicker({
       </fieldset>
 
       <div className="card space-y-5 p-5 sm:p-6">
+        <BillPicker picked={picked} onPickedChange={setPicked} existing={existingFiles} removed={removed} onRemovedChange={setRemoved} />
         {programs ? (
           <Field label="Program or grant" htmlFor="programId" hint="The one your phone use is charged to.">
             <select id="programId" name="programId" className="field" value={programId} onChange={(e) => setProgramId(e.target.value)}>

@@ -32,7 +32,8 @@ On the sign-in page, pick a made-up person from the **Demo** dropdown and press 
    nothing flagged can be ticked and approved together.
 3. **Rowan again.** The home page shows the update. The claim page shows the whole history:
    who did what, when, and why. The **Phone bill** card says his last two months are ready:
-   press **Claim $90.00**, confirm, and send it. It goes to Lena like a mileage claim.
+   press **Claim $90.00**, add a photo or PDF of the bill, confirm, and send it. It goes to Lena
+   like a mileage claim, and she can open the bill before approving.
 4. **Hazel Brightwater (finance).** **Finance** lists approved claims. Create a batch for the pay
    period, download the CSV for the financial system, then mark it paid. **Reports** totals trips
    by employee and program for any dates. Everything has a printable version.
@@ -57,7 +58,7 @@ On the sign-in page, pick a made-up person from the **Demo** dropdown and press 
 
 All names, emails (example.org), phone numbers (555-01xx), addresses and amounts are made up,
 except Eden's own entry. Tessa, Marcus, Lena and Rowan also have phone bill claims in different
-states (waiting, approved, returned to fix, paid).
+states (waiting, approved, returned to fix, paid), each with a made-up sample bill (PDF).
 
 ## Real sign-in codes for the demo
 

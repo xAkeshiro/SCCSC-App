@@ -12,7 +12,7 @@ Architecture, data model, security model and milestones: @docs/ARCHITECTURE.md
 ## Current status
 
 - Working prototype of the reimbursement tracker: mileage, and phone bills ($45 a month, claimed
-  every two months). Website; the installable app/PWA comes later.
+  every two months, with a photo or PDF of the bill). Website; the installable app/PWA comes later.
 - Runs on a built-in database (PGlite) with **fake data only** until the director and finance
   sign off. Supabase, real sign-in emails and a maps provider come after that.
 - Several business rules are still unconfirmed (see "Open questions" in the brief). Do not guess
