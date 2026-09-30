@@ -48,20 +48,24 @@ export default async function SignInPage() {
 
   return (
     <div className="grid min-h-dvh lg:grid-cols-[minmax(0,5fr)_minmax(0,6fr)]">
-      {/* Brand panel, echoing the dark hero on sccsc.org */}
-      <aside className="relative hidden overflow-hidden bg-ink text-white lg:flex lg:flex-col lg:justify-between lg:p-12">
+      {/*
+        Brand panel, echoing the dark hero on sccsc.org. Its contents are drawn at 90% and the
+        sign-in column at 80% on desktop (Eden's preferred look). `zoom` goes on blocks with a
+        natural height, never on the full-height panels, so the layout itself doesn't shrink.
+      */}
+      <aside className="relative hidden overflow-hidden bg-ink text-white lg:flex lg:flex-col lg:justify-between lg:p-11">
         <Image
           src="/brand/xin-glyph-white.svg"
           alt=""
           width={560}
           height={560}
-          className="pointer-events-none absolute -right-24 -bottom-16 w-[34rem] opacity-[0.07]"
+          className="pointer-events-none absolute -right-24 -bottom-16 w-[34rem] opacity-[0.07] [zoom:0.9]"
         />
-        <div className="relative flex items-center gap-3">
+        <div className="relative flex items-center gap-3 [zoom:0.9]">
           <Image src="/brand/xin-mark-square.svg" alt="" width={44} height={44} />
           <Wordmark inverted />
         </div>
-        <div className="relative max-w-md">
+        <div className="relative max-w-md [zoom:0.9]">
           <p className="flex items-center gap-2 font-display text-sm font-medium text-white/90">
             <HeartIcon className="size-4 text-brand-600" /> For SCCSC staff
           </p>
@@ -73,11 +77,11 @@ export default async function SignInPage() {
             paid. No more printing spreadsheets.
           </p>
         </div>
-        <p className="relative text-sm text-white/60">Sacramento Chinese Community Service Center</p>
+        <p className="relative text-sm text-white/60 [zoom:0.9]">Sacramento Chinese Community Service Center</p>
       </aside>
 
-      <main className="flex min-h-dvh flex-col bg-surface lg:min-h-0">
-        <div className="mx-auto flex w-full max-w-[31rem] flex-1 flex-col justify-center gap-3 px-4 py-4 sm:gap-4 sm:px-6 tall:gap-5 tall:py-8">
+      <main className="flex min-h-dvh flex-col justify-center bg-surface lg:min-h-0">
+        <div className="mx-auto flex w-full max-w-[31rem] flex-col gap-3 px-4 py-4 sm:gap-4 sm:px-6 tall:gap-5 tall:py-8 lg:[zoom:0.8]">
           <div className="flex items-center gap-2.5 lg:hidden">
             <Image src="/brand/xin-mark-square.svg" alt="" width={40} height={40} className="size-8" />
             <Wordmark compact />
