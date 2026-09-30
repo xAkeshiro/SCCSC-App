@@ -274,8 +274,8 @@ This is a starting point for discussion, not a final schema.
     for the installable app later)
 - Wordmark style (renamed 2026-09-30): lowercase, small charcoal "reimbursement" next to a larger red "tracker",
   echoing the "thecenter" logo.
-- Opening animation (added 2026-09-30): the full logo on white. The red seal stamps in, large, in
-  the middle of the screen, 心 is written stroke by stroke, then the seal glides to its place on the
+- Opening animation (added 2026-09-30): the full logo on white. The red seal, with the logo's thin
+  white inner line, stamps in, large, in the middle of the screen, 心 is written stroke by stroke, then the seal glides to its place on the
   left as "thecenter" and the name come out beside it, and it fades into the app, in about 3.5
   seconds.
   It plays once when the app is opened in a browser tab, a tap skips it, and it never plays for

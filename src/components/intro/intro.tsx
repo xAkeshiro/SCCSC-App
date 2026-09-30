@@ -75,6 +75,8 @@ export function Intro() {
           <g transform="translate(2 1) scale(1.9835)">
             <g className={styles.seal}>
               <rect width="91" height="91" fill="#D0112B" />
+              {/* The thin white line inside the square, as in the original logo. */}
+              <rect x="6.55" y="6.55" width="77.9" height="77.9" fill="none" stroke="#fff" strokeWidth="0.9" />
               <g fill="#fff">
                 {XIN_STROKES.map((s, i) => (
                   <path key={s.name} d={s.d} mask={`url(#intro-brush-${i})`} />
