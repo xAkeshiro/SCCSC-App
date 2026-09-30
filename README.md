@@ -36,10 +36,11 @@ On the sign-in page, pick a made-up person from the **Demo** dropdown and press 
    period, download the CSV for the financial system, then mark it paid. **Reports** totals trips
    by employee and program for any dates. Everything has a printable version.
 5. **Sam Whitlock (admin).** **Admin** shows Nora Pennington waiting for access. She verified her
-   phone but isn't on the staff list. Approve her with a role and a coordinator.
-6. **The real sign-in.** Sign out, then sign in as **Felix Hartwell, (916) 555-0108**. He's on the
-   staff list but has never signed in. The code appears on screen (no text is sent in the demo).
-   Any other name and number goes to the admin's approval queue.
+   email but isn't on the staff list. Approve her with a role and a coordinator.
+6. **The real sign-in.** Sign out, then sign in as **Felix Hartwell, felix.hartwell@example.org**.
+   He's on the staff list but has never signed in. The code appears on screen (no email is sent in
+   the demo unless you set it up below). **Use phone number instead** signs in with his mobile,
+   (916) 555-0108, to the same account. Any other name and email goes to the admin's approval queue.
 
 | Demo person | Roles | Coordinator |
 |---|---|---|
@@ -51,18 +52,18 @@ On the sign-in page, pick a made-up person from the **Demo** dropdown and press 
 | Sam Whitlock | Employee, admin | Owen Castellano |
 | Felix Hartwell | Employee (on the roster, never signed in) | Lena Fairbanks |
 
-All names, phone numbers (555-01xx), addresses and amounts are made up.
+All names, emails (example.org), phone numbers (555-01xx), addresses and amounts are made up.
 
 ## Real sign-in codes for the demo
 
 By default the demo shows the sign-in code on screen. To see the real "we sent you a code" step
-instead, the demo can send every code to you, whatever number is typed. You still sign in as the
-person whose number you typed. Pick one:
+instead, the demo can send every code to you, whatever email or number is typed. You still sign in
+as the person whose email or number you typed.
 
-- **By email through Resend (free).** The email is styled like sccsc.org.
-- **By text through Twilio Verify.** A trial works, then about $0.05 a text.
-
-If both are set up, email is used.
+- **By email through Resend (free).** The email is styled like sccsc.org. With only this set up,
+  codes for phone sign-in come to your inbox too, so the demo needs no texts.
+- **By text through Twilio Verify (optional, costs money).** Only for phone sign-in. A trial works,
+  then about $0.05 a text.
 
 ### By email (Resend, free)
 
@@ -80,10 +81,10 @@ If both are set up, email is used.
 
 4. Redeploy (Deployments → ⋯ → Redeploy). For local dev, put the same lines in `.env.local`.
 
-Then sign in with any name and number, for example Felix Hartwell, (916) 555-0108. The code comes
-from "SCCSC Staff" at `onboarding@resend.dev`; if the first one lands in spam, mark it "not spam".
-Limits: 5 codes per number per hour and 20 in total per hour, well inside Resend's free 100 emails
-a day. Once SCCSC verifies a domain in Resend (a subdomain of sccsc.org, for example), set
+Then sign in with any name and email, for example Felix Hartwell, felix.hartwell@example.org. The
+code comes from "SCCSC Staff" at `onboarding@resend.dev`; if the first one lands in spam, mark it
+"not spam". Limits: 5 codes per email or number per hour and 20 in total per hour, well inside
+Resend's free 100 emails a day. Once SCCSC verifies a domain in Resend (a subdomain of sccsc.org, for example), set
 `EMAIL_FROM` to send from it, like `SCCSC Staff <no-reply@staff.sccsc.org>`.
 
 ### By text (Twilio Verify)
@@ -107,8 +108,9 @@ with Twilio.
 
 5. Redeploy (Deployments → ⋯ → Redeploy). For local dev, put the same lines in `.env.local`.
 
-Then sign in with any name and number, for example Felix Hartwell, (916) 555-0108. The code arrives
-on your phone, and you sign in as the person whose number you typed. The demo dropdown still works
+Then tap **Use phone number instead** and sign in with any name and number, for example Felix
+Hartwell, (916) 555-0108. The code arrives on your phone, and you sign in as the person whose number
+you typed. Email sign-in keeps using email. The demo dropdown still works
 without a code. Limits: 5 texts per number per hour and 20 in total per hour, on top of Twilio's own
 limits. Twilio charges about $0.05 per verification, which the trial credit covers.
 
@@ -127,7 +129,7 @@ limits. Twilio charges about $0.05 per verification, which the trial credit cove
 ```
 src/
   app/
-    sign-in/, pending/     phone + code sign-in, "waiting for approval"
+    sign-in/, pending/     email (or phone) + code sign-in, "waiting for approval"
     (app)/                 signed-in pages: home, trips, claims, review, finance, admin, help
     print/                 printable claim and batch
   components/              UI building blocks in the sccsc.org style
@@ -152,5 +154,5 @@ assets/brand/              logo mark (copies served from public/brand/)
 ## What's next
 
 Admin screens (roster import, roles and coordinators, rates, programs, settings), then Supabase
-with real text messages and a Vercel deployment, a maps service for miles, notifications, and the
+with real sign-in emails, a maps service for miles, notifications, and the
 installable app. See the milestones in [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).

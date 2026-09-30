@@ -7,7 +7,15 @@ import { Button, Field, Notice } from "@/components/ui";
 import { approveRequest, rejectRequest, type ReviewState } from "./actions";
 
 type Props = {
-  request: { id: string; fullName: string; phone: string; askedAgo: string; matchedName: string | null };
+  request: {
+    id: string;
+    fullName: string;
+    /** The email or formatted phone number they signed in with. */
+    contact: string;
+    contactKind: "email" | "phone";
+    askedAgo: string;
+    matchedName: string | null;
+  };
   coordinators: { id: string; fullName: string }[];
   programs: { id: string; code: string; name: string }[];
 };
@@ -24,6 +32,7 @@ export function AccessRequestCard({ request, coordinators, programs }: Props) {
   const [approved, approve, approving] = useFormAction<ReviewState>(approveRequest.bind(null, request.id), {});
   const [rejected, reject, rejecting] = useFormAction<ReviewState>(rejectRequest.bind(null, request.id), {});
   const id = request.id.slice(0, 8);
+  const contactWord = request.contactKind === "email" ? "email" : "phone number";
 
   return (
     <li className="card p-5">
@@ -31,15 +40,17 @@ export function AccessRequestCard({ request, coordinators, programs }: Props) {
         <div>
           <p className="font-display text-xl font-semibold">{request.fullName}</p>
           <p className="mt-0.5 text-ink-700">
-            {request.phone} · <span className="text-ink-500">asked {request.askedAgo}</span>
+            <span className="break-all">{request.contact}</span> · <span className="text-ink-500">asked {request.askedAgo}</span>
           </p>
           {request.matchedName ? (
             <p className="mt-2 text-sm text-status-returned">
-              This phone number is on the staff list as <strong>{request.matchedName}</strong>. Approving links them to that
+              This {contactWord} is on the staff list as <strong>{request.matchedName}</strong>. Approving links them to that
               entry.
             </p>
           ) : (
-            <p className="mt-2 text-sm text-ink-500">Not on the staff list. Check their name and phone in Paychex before approving.</p>
+            <p className="mt-2 text-sm text-ink-500">
+              Not on the staff list. Check their name and {contactWord} in Paychex before approving.
+            </p>
           )}
         </div>
         {mode === "idle" ? (

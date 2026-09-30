@@ -3,8 +3,9 @@
  * Free for the demo (about 100 emails a day). The app makes and checks the code (`localCodes`);
  * Resend only delivers it.
  *
- * Staff sign in with their phone, not an email address, so this is a demo channel: every code goes
- * to one inbox (Eden's), whatever number was typed. The typed number still decides who signs in.
+ * Demo only: every code goes to one inbox (Eden's), whatever email or number was typed. What was
+ * typed still decides who signs in. Real staff emails come with Supabase Auth (M7), which can send
+ * through Resend once SCCSC verifies a domain.
  *
  * Environment (see .env.example):
  *   RESEND_API_KEY  an API key with "Sending access"
@@ -12,7 +13,7 @@
  *   EMAIL_FROM      optional. Without a verified domain, Resend only sends from onboarding@resend.dev,
  *                   and only to the address the Resend account signed up with.
  */
-import { maskPhone } from "@/lib/phone";
+import { maskContact } from "@/lib/contact";
 import { localCodes, type CodeProvider, type Deliver } from "./codes";
 import { signInCodeEmail } from "./sign-in-email";
 
@@ -31,13 +32,6 @@ export function emailConfig(): EmailConfig | null {
   return { apiKey, to, from: process.env.EMAIL_FROM?.trim() || DEFAULT_FROM };
 }
 
-/** you@example.com -> yo•••@example.com */
-export function maskEmail(email: string): string {
-  const at = email.lastIndexOf("@");
-  if (at < 1) return email;
-  return `${email.slice(0, Math.min(2, at))}•••${email.slice(at)}`;
-}
-
 function sendError(status: number): string {
   switch (status) {
     case 401:
@@ -52,8 +46,8 @@ function sendError(status: number): string {
 }
 
 export function emailCodeProvider(cfg: EmailConfig): CodeProvider {
-  const deliver: Deliver = async ({ code, phoneE164, fullName }) => {
-    const email = signInCodeEmail({ code, fullName, phoneMasked: maskPhone(phoneE164), demo: true });
+  const deliver: Deliver = async ({ code, contact, fullName }) => {
+    const email = signInCodeEmail({ code, fullName, contactMasked: maskContact(contact), demo: true });
     let res: Response;
     try {
       res = await fetch("https://api.resend.com/emails", {

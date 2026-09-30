@@ -3,6 +3,7 @@ import { demoEstimateMiles } from "@/lib/distance";
 import { formatCents, formatRate, mileageAmountCents, normalizeMiles, toScaledInt } from "@/lib/money";
 import { cleanName, namesMatch } from "@/lib/names";
 import { formatPhone, maskPhone, normalizeUsPhone } from "@/lib/phone";
+import { maskEmail, normalizeEmail } from "@/lib/contact";
 
 describe("money", () => {
   it("parses decimals exactly, rounding half up", () => {
@@ -47,6 +48,21 @@ describe("phone numbers", () => {
   });
 });
 
+describe("email addresses", () => {
+  it("lowercases and trims, and rejects what isn't an address", () => {
+    expect(normalizeEmail("  Rowan.Ellery@Example.ORG ")).toBe("rowan.ellery@example.org");
+    expect(normalizeEmail("rowan+mileage@example.org")).toBe("rowan+mileage@example.org");
+    for (const bad of ["", "rowan", "rowan@", "@example.org", "rowan@example", "ro wan@example.org", "a@b@example.org"]) {
+      expect(normalizeEmail(bad)).toBeNull();
+    }
+  });
+
+  it("masks all but the start of the name", () => {
+    expect(maskEmail("rowan.ellery@example.org")).toBe("ro•••@example.org");
+    expect(maskEmail("a@example.org")).toBe("a•••@example.org");
+  });
+});
+
 describe("roster name matching", () => {
   it("ignores case, accents, spacing and punctuation", () => {
     expect(namesMatch("Rowan Ellery", "  rowan   ELLERY ")).toBe(true);
@@ -86,11 +102,13 @@ describe("demo distance estimate", () => {
 
 describe("sign-in code provider", () => {
   it("refuses to show codes on screen when a real database is configured", async () => {
-    const { getCodeProvider } = await import("@/lib/auth/code-provider");
-    expect(getCodeProvider().channel).toBe("screen");
+    const { getCodeProvider, phoneSignInAvailable } = await import("@/lib/auth/code-provider");
+    expect(getCodeProvider("email").channel).toBe("screen");
+    expect(phoneSignInAvailable()).toBe(true);
     process.env.DATABASE_URL = "postgres://example/real";
     try {
-      expect(() => getCodeProvider()).toThrow(/can't be used with a real database/);
+      expect(() => getCodeProvider("email")).toThrow(/can't be used with a real database/);
+      expect(phoneSignInAvailable()).toBe(false);
     } finally {
       delete process.env.DATABASE_URL;
     }

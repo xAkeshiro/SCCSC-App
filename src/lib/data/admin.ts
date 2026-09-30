@@ -20,6 +20,7 @@ export async function adminOverview(viewer: Viewer) {
         coordinatorId: staff.coordinatorId,
         source: staff.source,
         phone: staffPrivate.phoneE164,
+        email: staffPrivate.email,
       })
       .from(staff)
       .leftJoin(staffPrivate, eq(staffPrivate.staffId, staff.id))
@@ -56,7 +57,7 @@ export type ApproveInput = {
   programId: string | null;
 };
 
-/** Approves an access request: links the roster entry with the same phone, or adds a new staff member. */
+/** Approves an access request: links the roster entry with the same email or phone, or adds a new staff member. */
 export async function approveAccessRequest(viewer: Viewer, input: ApproveInput) {
   return withUser(viewer.userId, async (tx) => {
     const [req] = await tx
@@ -67,15 +68,21 @@ export async function approveAccessRequest(viewer: Viewer, input: ApproveInput) 
     if (!req) throw new UserError("This request was already handled.");
 
     let staffId: string;
-    const [samePhone] = await tx.select().from(staffPrivate).where(eq(staffPrivate.phoneE164, req.phoneE164)).limit(1);
-    if (samePhone) {
-      // The phone is on the roster (the name typed didn't match exactly): link to that person.
+    const [sameContact] = await tx
+      .select()
+      .from(staffPrivate)
+      .where(req.email ? eq(staffPrivate.email, req.email) : eq(staffPrivate.phoneE164, req.phoneE164!))
+      .limit(1);
+    if (sameContact) {
+      // The email or phone is on the roster (the name typed didn't match exactly): link to that person.
       const [linked] = await tx
         .update(staff)
         .set({ userId: req.userId, coordinatorId: input.coordinatorId, defaultProgramId: input.programId, status: "active", updatedAt: new Date() })
-        .where(and(eq(staff.id, samePhone.staffId), isNull(staff.userId)))
+        .where(and(eq(staff.id, sameContact.staffId), isNull(staff.userId)))
         .returning({ id: staff.id });
-      if (!linked) throw new UserError("That phone number already belongs to someone who has signed in.");
+      if (!linked) {
+        throw new UserError(`That ${req.email ? "email" : "phone number"} already belongs to someone who has signed in.`);
+      }
       staffId = linked.id;
       await tx.delete(staffRoles).where(eq(staffRoles.staffId, staffId));
     } else {
@@ -90,12 +97,12 @@ export async function approveAccessRequest(viewer: Viewer, input: ApproveInput) 
         })
         .returning({ id: staff.id });
       staffId = created.id;
-      await tx.insert(staffPrivate).values({ staffId, phoneE164: req.phoneE164 });
+      await tx.insert(staffPrivate).values({ staffId, phoneE164: req.phoneE164, email: req.email });
     }
     await tx.insert(staffRoles).values(input.roles.map((role) => ({ staffId, role })));
     await tx
       .update(accessRequests)
-      .set({ status: "approved", reviewedBy: viewer.staffId, reviewedAt: new Date(), matchedStaffId: samePhone?.staffId ?? null })
+      .set({ status: "approved", reviewedBy: viewer.staffId, reviewedAt: new Date(), matchedStaffId: sameContact?.staffId ?? null })
       .where(eq(accessRequests.id, req.id));
     return staffId;
   });

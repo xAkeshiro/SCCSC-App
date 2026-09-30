@@ -13,7 +13,7 @@ Architecture, data model, security model and milestones: @docs/ARCHITECTURE.md
 
 - Working prototype of the mileage tracker (website; the installable app/PWA comes later).
 - Runs on a built-in database (PGlite) with **fake data only** until the director and finance
-  sign off. Supabase, real text messages and a maps provider come after that.
+  sign off. Supabase, real sign-in emails and a maps provider come after that.
 - Several business rules are still unconfirmed (see "Open questions" in the brief). Do not guess
   at these. Build them as configurable settings (the `settings` table) or ask Eden.
 
@@ -35,10 +35,12 @@ Architecture, data model, security model and milestones: @docs/ARCHITECTURE.md
   (for example `proxy.ts` replaced middleware, and `params`/`cookies()` are async).
 - Drizzle ORM. PGlite (built-in Postgres) for the demo and local dev; Supabase Postgres later.
   Same migrations and RLS policies on both.
-- Sign-in: phone number + text code. Roster match gets in right away; anyone else waits for an
-  admin to approve (checked against Paychex). Demo mode shows the code on screen, or sends every
-  code to Eden: by email through Resend (`RESEND_API_KEY` + `DEMO_EMAIL_TO`), or by text through
-  Twilio Verify (`TWILIO_*` + `DEMO_SMS_TO`).
+- Sign-in: email + code by default, or "Use phone number instead" for a text code (texts cost
+  money, so email comes first). Roster match (name + email or phone) gets in right away; anyone
+  else waits for an admin to approve (checked against Paychex). One account per person holds both.
+  Demo mode shows the code on screen, or sends every code to Eden: by email through Resend
+  (`RESEND_API_KEY` + `DEMO_EMAIL_TO`), or phone codes by text through Twilio Verify (`TWILIO_*` +
+  `DEMO_SMS_TO`).
 - Deployed on Vercel: project `sccsc-app` (demo mode, fake data), from this repo's default branch.
 - Later: installable **PWA** (same features as the site), SMS/email notifications, a
   maps/distance API (provider to be chosen, consider cost).

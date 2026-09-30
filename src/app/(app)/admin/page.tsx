@@ -26,7 +26,7 @@ export default async function AdminPage() {
         <h2 id="requests" className="text-2xl">
           Waiting for access {data.pending.length ? <span className="text-brand-600">({data.pending.length})</span> : null}
         </h2>
-        <p className="mt-1 text-ink-500">These people verified their phone but didn&apos;t match the staff list.</p>
+        <p className="mt-1 text-ink-500">These people verified their email or phone but didn&apos;t match the staff list.</p>
         {data.pending.length === 0 ? (
           <div className="mt-4">
             <EmptyState title="No one is waiting">New requests show up here when someone signs in who isn&apos;t on the staff list.</EmptyState>
@@ -39,7 +39,8 @@ export default async function AdminPage() {
                 request={{
                   id: r.id,
                   fullName: r.fullName,
-                  phone: formatPhone(r.phoneE164),
+                  contact: r.email ?? formatPhone(r.phoneE164 ?? ""),
+                  contactKind: r.email ? "email" : "phone",
                   askedAgo: timeAgo(r.createdAt),
                   matchedName: r.matched?.fullName ?? null,
                 }}
@@ -70,12 +71,13 @@ export default async function AdminPage() {
           Staff list
         </h2>
         <div className="card mt-4 overflow-x-auto">
-          <table className="w-full min-w-[40rem] text-left">
+          <table className="w-full min-w-[48rem] text-left">
             <thead className="border-b border-ink-100 text-sm text-ink-500">
               <tr>
                 <th scope="col" className="px-5 py-3 font-semibold">Name</th>
                 <th scope="col" className="px-5 py-3 font-semibold">Roles</th>
                 <th scope="col" className="px-5 py-3 font-semibold">Coordinator</th>
+                <th scope="col" className="px-5 py-3 font-semibold">Email</th>
                 <th scope="col" className="px-5 py-3 font-semibold">Mobile</th>
                 <th scope="col" className="px-5 py-3 font-semibold">Signed in?</th>
               </tr>
@@ -95,6 +97,7 @@ export default async function AdminPage() {
                     </div>
                   </td>
                   <td className="px-5 py-3">{p.coordinatorName ?? <span className="text-ink-500">Admin reviews</span>}</td>
+                  <td className="px-5 py-3">{p.email ?? "—"}</td>
                   <td className="px-5 py-3 whitespace-nowrap">{p.phone ? formatPhone(p.phone) : "—"}</td>
                   <td className="px-5 py-3">{p.userId ? "Yes" : <span className="text-ink-500">Not yet</span>}</td>
                 </tr>

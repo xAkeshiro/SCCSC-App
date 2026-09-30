@@ -9,13 +9,25 @@ export async function signInAs(page: Page, name: string) {
   await expect(page).toHaveURL(/\/$/);
 }
 
-/** The real flow: name + phone, then the code (shown on screen in demo mode). */
-export async function signInWithCode(page: Page, name: string, phone: string) {
+/**
+ * The real flow: name + email (or a phone number, after switching), then the code (shown on screen
+ * in demo mode).
+ */
+export async function signInWithCode(page: Page, name: string, emailOrPhone: string) {
   await page.context().clearCookies();
   await page.goto("/sign-in");
   await page.getByLabel("Full name").fill(name);
-  await page.getByLabel("Mobile number").fill(phone);
-  await page.getByRole("button", { name: "Text me a code" }).click();
+  if (emailOrPhone.includes("@")) {
+    await page.getByLabel("Email", { exact: true }).fill(emailOrPhone);
+    await page.getByRole("button", { name: "Email me a code" }).click();
+    await expect(page.getByText("Check your email")).toBeVisible();
+  } else {
+    await page.getByRole("button", { name: "Use phone number instead" }).click();
+    await expect(page.getByLabel("Mobile number")).toBeFocused();
+    await page.getByLabel("Mobile number").fill(emailOrPhone);
+    await page.getByRole("button", { name: "Text me a code" }).click();
+    await expect(page.getByText("Check your phone")).toBeVisible();
+  }
   const code = (await page.getByTestId("demo-code").textContent())!.trim();
   await page.getByLabel("6-digit code").fill(code);
   await page.getByRole("button", { name: "Sign in", exact: true }).click();
@@ -24,12 +36,6 @@ export async function signInWithCode(page: Page, name: string, phone: string) {
 export async function signOut(page: Page) {
   await page.getByRole("button", { name: "Sign out" }).first().click();
   await expect(page).toHaveURL(/\/sign-in$/);
-}
-
-/** A fictional 555-01xx number that is not used by the seed (0101-0109). */
-export function randomPhone() {
-  const n = 150 + Math.floor(Math.random() * 50);
-  return `(916) 555-0${n}`;
 }
 
 export function randomSuffix() {

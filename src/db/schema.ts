@@ -90,15 +90,27 @@ export const staff = pgTable(
   (t) => [index("staff_coordinator_idx").on(t.coordinatorId)],
 );
 
-/** Personal contact details, readable by admins only (phones are personal data). */
-export const staffPrivate = pgTable("staff_private", {
-  staffId: uuid("staff_id")
-    .primaryKey()
-    .references(() => staff.id, { onDelete: "cascade" }),
-  /** E.164, e.g. +19165550101. Used to match sign-ins against the roster. */
-  phoneE164: text("phone_e164").notNull().unique(),
-  updatedAt: updatedAt(),
-});
+/**
+ * Personal contact details, readable by admins only. Sign-ins are matched against the roster by
+ * email (the default) or mobile number, plus the name.
+ */
+export const staffPrivate = pgTable(
+  "staff_private",
+  {
+    staffId: uuid("staff_id")
+      .primaryKey()
+      .references(() => staff.id, { onDelete: "cascade" }),
+    /** E.164, e.g. +19165550101. */
+    phoneE164: text("phone_e164").unique(),
+    /** Lowercase, e.g. rowan.ellery@example.org. */
+    email: text("email").unique(),
+    updatedAt: updatedAt(),
+  },
+  (t) => [
+    check("staff_private_contact", sql`${t.phoneE164} is not null or ${t.email} is not null`),
+    check("staff_private_email_lower", sql`${t.email} = lower(${t.email})`),
+  ],
+);
 
 export const staffRoles = pgTable(
   "staff_roles",
@@ -120,7 +132,7 @@ export const staffState = pgTable("staff_state", {
 });
 
 /**
- * Someone verified their phone but did not match the roster (or their name differed).
+ * Someone verified their email or phone but did not match the roster (or their name differed).
  * An admin checks them against payroll and approves or rejects.
  */
 export const accessRequests = pgTable(
@@ -131,8 +143,10 @@ export const accessRequests = pgTable(
       .notNull()
       .references(() => authUsers.id, { onDelete: "cascade" }),
     fullName: text("full_name").notNull(),
-    phoneE164: text("phone_e164").notNull(),
-    /** A roster entry with the same phone but a different name, if any. */
+    /** The email or phone they signed in with (one of the two). */
+    phoneE164: text("phone_e164"),
+    email: text("email"),
+    /** A roster entry with the same email or phone but a different name, if any. */
     matchedStaffId: uuid("matched_staff_id").references(() => staff.id, { onDelete: "set null" }),
     status: accessRequestStatus("status").notNull().default("pending"),
     reviewedBy: uuid("reviewed_by").references(() => staff.id, { onDelete: "set null" }),
@@ -140,7 +154,10 @@ export const accessRequests = pgTable(
     reviewNote: text("review_note"),
     createdAt: createdAt(),
   },
-  (t) => [index("access_requests_status_idx").on(t.status)],
+  (t) => [
+    index("access_requests_status_idx").on(t.status),
+    check("access_requests_contact", sql`${t.phoneE164} is not null or ${t.email} is not null`),
+  ],
 );
 
 // ---------------------------------------------------------------------------------------------

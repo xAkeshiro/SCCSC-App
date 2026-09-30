@@ -9,8 +9,9 @@
  *                number still decides who signs in.
  */
 import type { Tx } from "@/db";
+import type { Contact } from "@/lib/contact";
 import { normalizeUsPhone } from "@/lib/phone";
-import { MAX_DELIVERIES_PER_HOUR_TOTAL, MAX_SENDS_PER_HOUR, allowSend, upsertAuthUser, type CodeProvider } from "./codes";
+import { MAX_DELIVERIES_PER_HOUR_TOTAL, MAX_SENDS_PER_HOUR, TOO_MANY_SENDS, allowSend, type CodeProvider } from "./codes";
 
 export type TwilioConfig = { accountSid: string; authToken: string; serviceSid: string; demoTo: string | null };
 
@@ -79,29 +80,32 @@ function checkError(code: number | null): string {
   }
 }
 
+/** Texts codes for phone sign-in. */
 export function twilioVerifyProvider(cfg: TwilioConfig): CodeProvider {
-  const destinationFor = (phone: string) => cfg.demoTo ?? phone;
+  const destinationFor = (contact: Contact) => {
+    if (contact.kind !== "phone") throw new Error("Twilio Verify only texts phone numbers.");
+    return cfg.demoTo ?? contact.value;
+  };
   return {
     channel: "sms",
     destinationFor,
 
-    async send(tx: Tx, phone: string) {
-      if (!(await allowSend(tx, phone, MAX_SENDS_PER_HOUR))) {
-        return { ok: false, message: "Too many codes were sent to this number. Please wait an hour and try again." };
-      }
+    async send(tx: Tx, contact: Contact) {
+      const to = destinationFor(contact);
+      if (!(await allowSend(tx, contact.value, MAX_SENDS_PER_HOUR))) return { ok: false, message: TOO_MANY_SENDS };
       if (!(await allowSend(tx, "*", MAX_DELIVERIES_PER_HOUR_TOTAL))) {
         return { ok: false, message: "The demo has sent a lot of texts this hour. Please try again later, or use the demo list." };
       }
-      const res = await verifyApi(cfg, "Verifications", { To: destinationFor(phone), Channel: "sms" });
+      const res = await verifyApi(cfg, "Verifications", { To: to, Channel: "sms" });
       return res.ok ? { ok: true } : { ok: false, message: sendError(res.code) };
     },
 
-    async verify(tx: Tx, phone: string, code: string) {
-      const res = await verifyApi(cfg, "VerificationCheck", { To: destinationFor(phone), Code: code.trim() });
+    async verify(_tx: Tx, contact: Contact, code: string) {
+      const res = await verifyApi(cfg, "VerificationCheck", { To: destinationFor(contact), Code: code.trim() });
       if (!res.ok) return { ok: false, message: checkError(res.code) };
       if (res.data.status !== "approved") return { ok: false, message: "That code isn't right. Please check the text and try again." };
-      // The account belongs to the number that was typed, not the phone the text went to.
-      return { ok: true, userId: await upsertAuthUser(tx, phone) };
+      // The account is found from the number that was typed, not the phone the text went to.
+      return { ok: true };
     },
   };
 }

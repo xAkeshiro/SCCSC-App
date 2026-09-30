@@ -9,10 +9,9 @@ import { staff, staffRoles } from "@/db/schema";
 import { DEMO } from "@/db/seed";
 import { withSystem } from "@/db/with-user";
 import { getCodeProvider } from "@/lib/auth/code-provider";
-import type { Channel } from "@/lib/auth/codes";
-import { maskEmail } from "@/lib/auth/email";
 import { getSessionUserId, getPendingSignIn } from "@/lib/auth/session";
 import { getViewer, type Role } from "@/lib/auth/viewer";
+import { maskEmail, type ContactKind } from "@/lib/contact";
 import { maskPhone } from "@/lib/phone";
 import { signInAsDemoPerson, startOver } from "./actions";
 import { RequestCodeForm, VerifyCodeForm } from "./forms";
@@ -41,25 +40,28 @@ async function demoPeople() {
   });
 }
 
+/** How codes reach someone signing in with an email or phone, or null when it isn't set up. */
+function providerFor(kind: ContactKind) {
+  try {
+    return getCodeProvider(kind);
+  } catch {
+    return null; // Sending shows the error.
+  }
+}
+
+/** Whether the code arrives as an email or a text. The on-screen demo mimics the one they'd get. */
+function arrivesBy(kind: ContactKind): "email" | "sms" {
+  const channel = providerFor(kind)?.channel;
+  if (channel === "email" || channel === "sms") return channel;
+  return kind === "email" ? "email" : "sms";
+}
+
 export default async function SignInPage() {
   if (await getViewer()) redirect("/");
   if (await getSessionUserId()) redirect("/pending");
 
   const pending = await getPendingSignIn();
   const demoCode = pending ? (await cookies()).get("sccsc_demo_code")?.value : undefined;
-  // In the email demo (DEMO_EMAIL_TO) and texting demo (DEMO_SMS_TO), every code goes to one inbox
-  // or phone rather than the number typed.
-  let channel: Channel = "sms";
-  let sentTo = pending?.phone ?? null;
-  try {
-    const provider = getCodeProvider();
-    channel = provider.channel;
-    if (pending) sentTo = provider.destinationFor(pending.phone);
-  } catch {
-    // Misconfigured codes: sending shows the error.
-  }
-  const byEmail = channel === "email";
-  const sentElsewhere = Boolean(pending && sentTo !== pending.phone);
   const people = await demoPeople();
 
   return (
@@ -105,63 +107,19 @@ export default async function SignInPage() {
 
           <div className="card p-6 shadow-[var(--shadow-card)] sm:px-9 sm:py-7 roomy:sm:px-10 roomy:sm:py-10">
             {pending ? (
-              <>
-                <Eyebrow>{byEmail ? "Check your email" : "Check your phone"}</Eyebrow>
-                <h2 className="mt-2 text-3xl leading-tight sm:mt-3 sm:text-4xl roomy:mt-4">Enter your code</h2>
-                <p className="mt-2 text-ink-500 sm:mt-3 roomy:mt-4">
-                  {byEmail ? "We emailed a code to " : "We texted a code to "}
-                  <strong className="text-ink">
-                    {byEmail && sentTo ? maskEmail(sentTo) : maskPhone(sentTo ?? pending.phone)}
-                  </strong>
-                  . It works for 10 minutes.
-                </p>
-                {sentElsewhere ? (
-                  <div className="mt-5 flex gap-3 rounded-[var(--radius-card)] bg-ink-50 p-4" role="status">
-                    {byEmail ? (
-                      <Mail aria-hidden className="mt-0.5 size-5 shrink-0 text-brand-600" />
-                    ) : (
-                      <MessageSquareText aria-hidden className="mt-0.5 size-5 shrink-0 text-brand-600" />
-                    )}
-                    <p className="text-sm">
-                      <span className="font-semibold">Demo:</span> every code goes to the demo{" "}
-                      {byEmail ? "inbox" : "phone"}, not the number you typed. You&apos;ll sign in as the person whose number
-                      you entered.
-                    </p>
-                  </div>
-                ) : null}
-                {demoCode ? (
-                  <div className="mt-5 flex gap-3 rounded-[var(--radius-card)] bg-ink-50 p-4" role="status">
-                    <MessageSquareText aria-hidden className="mt-0.5 size-5 shrink-0 text-brand-600" />
-                    <p className="text-sm">
-                      <span className="font-semibold">Demo text message</span> (no real text is sent)
-                      <br />
-                      Your SCCSC sign-in code is{" "}
-                      <strong className="font-display text-lg tracking-widest" data-testid="demo-code">
-                        {demoCode}
-                      </strong>
-                    </p>
-                  </div>
-                ) : null}
-                <div className="mt-6">
-                  <VerifyCodeForm channel={channel} />
-                </div>
-                <form action={startOver} className="mt-4 border-t border-ink-100 pt-4">
-                  <Button type="submit" variant="ghost" size="sm" className="w-full text-ink-700">
-                    <ArrowLeft aria-hidden className="size-4" /> Use a different name or number
-                  </Button>
-                </form>
-              </>
+              <CodeStep contact={pending.contact} demoCode={demoCode} />
             ) : (
               <>
                 <Eyebrow>Welcome to the Center</Eyebrow>
                 <h2 className="mt-2 text-3xl leading-tight sm:mt-3 sm:text-4xl roomy:mt-4">
                   <BrushText>Sign in</BrushText>
                 </h2>
-                <p className="mt-2 text-ink-500 sm:mt-3 roomy:mt-4">
-                  No password. We&apos;ll {byEmail ? "email" : "text"} you a code.
-                </p>
+                <p className="mt-2 text-ink-500 sm:mt-3 roomy:mt-4">No password. We&apos;ll send you a code.</p>
                 <div className="mt-5 sm:mt-6 roomy:mt-8">
-                  <RequestCodeForm channel={channel} />
+                  <RequestCodeForm
+                    sendLabels={{ email: "Email me a code", phone: arrivesBy("phone") === "sms" ? "Text me a code" : "Send me a code" }}
+                    phoneAvailable={providerFor("phone") !== null}
+                  />
                 </div>
                 <p className="mt-5 border-t border-ink-100 pt-4 text-sm text-ink-500 roomy:mt-7 roomy:pt-5">
                   <span className="font-semibold text-ink-700">New here?</span> Sign in the same way. An admin will approve
@@ -175,6 +133,60 @@ export default async function SignInPage() {
         </div>
       </main>
     </div>
+  );
+}
+
+/** Step 2: enter the code that was emailed or texted (or, in the demo, shown here). */
+function CodeStep({ contact, demoCode }: { contact: { kind: ContactKind; value: string }; demoCode?: string }) {
+  const byEmail = arrivesBy(contact.kind) === "email";
+  // In the email demo (DEMO_EMAIL_TO) and texting demo (DEMO_SMS_TO), every code goes to one inbox
+  // or phone rather than what was typed.
+  const sentTo = providerFor(contact.kind)?.destinationFor(contact) ?? contact.value;
+  const sentElsewhere = sentTo !== contact.value;
+  const typed = contact.kind === "email" ? "email" : "number";
+  const Icon = byEmail ? Mail : MessageSquareText;
+
+  return (
+    <>
+      <Eyebrow>{byEmail ? "Check your email" : "Check your phone"}</Eyebrow>
+      <h2 className="mt-2 text-3xl leading-tight sm:mt-3 sm:text-4xl roomy:mt-4">Enter your code</h2>
+      <p className="mt-2 text-ink-500 sm:mt-3 roomy:mt-4">
+        {byEmail ? "We emailed a code to " : "We texted a code to "}
+        <strong className="break-all text-ink">{byEmail ? maskEmail(sentTo) : maskPhone(sentTo)}</strong>. It works for 10
+        minutes.
+      </p>
+      {sentElsewhere ? (
+        <div className="mt-5 flex gap-3 rounded-[var(--radius-card)] bg-ink-50 p-4" role="status">
+          <Icon aria-hidden className="mt-0.5 size-5 shrink-0 text-brand-600" />
+          <p className="text-sm">
+            <span className="font-semibold">Demo:</span> every code goes to the demo {byEmail ? "inbox" : "phone"}, not the{" "}
+            {typed} you typed. You&apos;ll sign in as the person whose {typed} you entered.
+          </p>
+        </div>
+      ) : null}
+      {demoCode ? (
+        <div className="mt-5 flex gap-3 rounded-[var(--radius-card)] bg-ink-50 p-4" role="status">
+          <Icon aria-hidden className="mt-0.5 size-5 shrink-0 text-brand-600" />
+          <p className="text-sm">
+            <span className="font-semibold">{byEmail ? "Demo email" : "Demo text message"}</span> (no real{" "}
+            {byEmail ? "email" : "text"} is sent)
+            <br />
+            Your SCCSC sign-in code is{" "}
+            <strong className="font-display text-lg tracking-widest" data-testid="demo-code">
+              {demoCode}
+            </strong>
+          </p>
+        </div>
+      ) : null}
+      <div className="mt-6">
+        <VerifyCodeForm resendLabel={byEmail ? "Email me a new code" : "Text me a new code"} />
+      </div>
+      <form action={startOver} className="mt-4 border-t border-ink-100 pt-4">
+        <Button type="submit" variant="ghost" size="sm" className="w-full text-ink-700">
+          <ArrowLeft aria-hidden className="size-4" /> Use a different name or {typed}
+        </Button>
+      </form>
+    </>
   );
 }
 
@@ -221,7 +233,7 @@ function DemoPicker({ people }: { people: { id: string; name: string; roles: Rol
           </Button>
         </div>
         <p className="mt-2 text-xs text-ink-500">
-          Or try the real sign-in: <strong className="text-ink-700">Felix Hartwell</strong>, (916) 555-0108
+          Real sign-in: <strong className="text-ink-700">Felix Hartwell</strong>, felix.hartwell@example.org
         </p>
       </form>
     </section>

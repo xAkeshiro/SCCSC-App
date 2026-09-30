@@ -24,6 +24,9 @@ create table if not exists auth.users (
   last_sign_in_at timestamptz
 );
 
+-- One sign-in account per email, as on Supabase. A person's account can have both an email and a phone.
+create unique index if not exists users_email_key on auth.users (email);
+
 -- Same definition Supabase uses: the signed-in user's id from the request's JWT claims.
 create or replace function auth.uid() returns uuid
 language sql stable
@@ -38,11 +41,22 @@ grant usage on schema auth to anon, authenticated;
 grant execute on function auth.uid() to anon, authenticated;
 grant usage on schema public to anon, authenticated;
 
--- Sign-in codes for the demo "text message" (Supabase Auth keeps its own when it takes over).
+-- Sign-in codes made by the app for the demo (Supabase Auth keeps its own when it takes over).
+-- `contact` is the email or phone (E.164) they were sent for, or `limit:…` for send limits.
 create schema if not exists demo;
 
+do $$
+begin
+  -- Databases made before email sign-in keyed codes by phone only.
+  if exists (select 1 from information_schema.columns
+             where table_schema = 'demo' and table_name = 'verification_codes' and column_name = 'phone') then
+    alter table demo.verification_codes rename column phone to contact;
+  end if;
+end
+$$;
+
 create table if not exists demo.verification_codes (
-  phone text primary key,
+  contact text primary key,
   code_hash text not null,
   expires_at timestamptz not null,
   attempts integer not null default 0,

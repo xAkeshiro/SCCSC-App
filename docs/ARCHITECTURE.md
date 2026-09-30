@@ -30,7 +30,7 @@ Postgres
 |---|---|---|---|
 | Local dev | `npm run dev`, no `DATABASE_URL` | PGlite saved in `.data/pglite` | on screen, or emailed or texted (below) |
 | Demo | on Vercel without `DATABASE_URL`, or `DEMO_MODE=true` | PGlite in memory, reseeded on start | on screen, or emailed or texted (below) |
-| Production (later) | `DATABASE_URL` set | Supabase Postgres | text message (Supabase Auth) |
+| Production (later) | `DATABASE_URL` set | Supabase Postgres | email, or text if approved (Supabase Auth) |
 
 Local dev and the demo seed fake data on first start and show a "Demo, fake data only" banner.
 On Vercel each server instance keeps its own in-memory copy, so changes made in the demo reset
@@ -56,10 +56,10 @@ Everything is a **request** (a claim) of a **request type**, made of **request i
 | Table | What it holds |
 |---|---|
 | `staff` | A staff member: name, active/inactive, coordinator, default program. `user_id` links their sign-in account once they have signed in. |
-| `staff_private` | Phone number (E.164). Admins only. |
+| `staff_private` | Email and phone number (E.164), used to match sign-ins to the roster. Admins only. |
 | `staff_roles` | employee, coordinator, finance, admin. A person can hold several. |
 | `staff_state` | Per-person state they may change themselves (when they last read their updates). |
-| `access_requests` | People who verified a phone but didn't match the roster, waiting for an admin. |
+| `access_requests` | People who verified an email or phone but didn't match the roster, waiting for an admin. |
 | `programs` | Program or grant codes trips are charged to. |
 | `request_types` | `mileage` (more later). |
 | `rates` | Effective-dated rates in cents per unit (`numeric`, so 72.5¢ is exact). |
@@ -84,7 +84,7 @@ so the same policies work in the demo and in production, and the tests exercise 
 
 Who sees what:
 
-| | Own trips and claims | Team's claims | Everyone's claims | Phone numbers | Home addresses |
+| | Own trips and claims | Team's claims | Everyone's claims | Emails and phones | Home addresses |
 |---|---|---|---|---|---|
 | Employee | ✓ | | | | own only |
 | Coordinator | ✓ | ✓ (once submitted) | | | own only |
@@ -108,21 +108,25 @@ The rules are tested in `tests/db/security.test.ts`.
 
 ## Sign-in
 
-1. The person enters their full name and mobile number.
+1. The person enters their full name and email. "Use phone number instead" swaps the email for
+   their mobile number. Email is the default because texts cost money.
 2. A 6-digit code is sent (`src/lib/auth/code-provider.ts` picks how):
    - **Email through Resend** when `RESEND_API_KEY` and `DEMO_EMAIL_TO` are set
-     (`src/lib/auth/email.ts`). Demo only: staff sign in by phone, so every code goes to one inbox
-     (Eden's), whatever number was typed, and it is refused when `DATABASE_URL` is set. The app
-     makes and checks the code; the email (`sign-in-email.ts`) follows the sccsc.org look.
-   - **Twilio Verify** when `TWILIO_*` is set (`src/lib/auth/twilio.ts`). Twilio makes, texts and
-     checks the code. For the demo, `DEMO_SMS_TO` sends every code to one phone (Eden's),
-     whatever number was typed; the typed number still decides who signs in. That override is
-     refused when `DATABASE_URL` is set.
+     (`src/lib/auth/email.ts`). Demo only: every code goes to one inbox (Eden's), whatever email or
+     number was typed, and it is refused when `DATABASE_URL` is set. The app makes and checks the
+     code; the email (`sign-in-email.ts`) follows the sccsc.org look. Used for email sign-in, and
+     for phone sign-in when Twilio isn't set up.
+   - **Twilio Verify** for phone sign-in when `TWILIO_*` is set (`src/lib/auth/twilio.ts`). Twilio
+     makes, texts and checks the code. For the demo, `DEMO_SMS_TO` sends every code to one phone
+     (Eden's), whatever number was typed. That override is refused when `DATABASE_URL` is set.
    - **On screen** otherwise (demo data only; refused when `DATABASE_URL` is set).
-   Codes expire after 10 minutes and allow 5 tries. Each number can request 5 per hour, and the
-   email and texting demos send at most 20 codes an hour in total. Later, Supabase phone sign-in (which can
-   use Twilio Verify) takes over.
-3. With the right code, their phone is verified:
+   What was typed, not where the code went, decides who signs in. Codes expire after 10 minutes and
+   allow 5 tries. Each email or number can request 5 per hour, and the email and texting demos send
+   at most 20 codes an hour in total. Later, Supabase email and phone sign-in take over.
+3. With the right code, their email or phone is verified. `signInAccount` (`src/lib/auth/sign-in.ts`)
+   finds their sign-in account: one per person, holding their email and phone, like a Supabase
+   user. The first time someone uses the other one the roster has for them (with the same name),
+   it's added to their account, so email and phone lead to the same trips and claims. Then:
    - **On the roster, name matches** → linked to their staff record and signed in.
    - **Not on the roster, or the name differs** → an access request is created, and they see
      "waiting for approval" until an admin approves them (checking Paychex) or rejects them.
@@ -141,13 +145,13 @@ replace it, with results cached.
 | | Milestone | Status |
 |---|---|---|
 | M0 | Foundation: docs, scaffold, design system, database + RLS, seed, tests | done |
-| M1 | Sign-in with phone + code, roster match, access requests, demo people | done |
+| M1 | Sign-in with email (or phone) + code, roster match, access requests, demo people | done |
 | M2 | Log, edit and delete trips; saved places; miles and amount | done |
 | M3 | Submit claims, claim history, return and resubmit, updates, printable claim | done |
 | M4 | Coordinator review: approve, return, deny, bulk approve | done |
 | M5 | Finance: batches, CSV export, mark paid, printable batch, simple report | done |
 | M6 | Admin: roster import, roles and coordinators, rates, programs, settings, audit view | later |
-| M7 | Supabase + real text messages, then deploy to Vercel | later |
+| M7 | Supabase + real sign-in emails (texts if approved) | later |
 | M8 | Maps provider and notifications | later |
 | M9 | Installable app (PWA), offline trip drafts | later |
 | M10 | Second request type | later |
@@ -158,6 +162,8 @@ replace it, with results cached.
    `SESSION_SECRET` in Vercel.
 2. Run the migrations in `drizzle/` against it (a `db:migrate` script). `demo-bootstrap.sql` is not
    used: Supabase already has `auth.users`, `auth.uid()` and the roles.
-3. Turn on Phone sign-in in Supabase Auth with an SMS provider, and swap the demo code provider in
-   `src/lib/auth/` for Supabase's `signInWithOtp` / `verifyOtp`.
+3. Turn on Email sign-in in Supabase Auth (codes, sent through Resend's SMTP once a domain is
+   verified) and, if texts are approved, Phone sign-in with an SMS provider. Swap the demo code
+   providers in `src/lib/auth/` for Supabase's `signInWithOtp` / `verifyOtp`, and add the second
+   email or phone to a person's account through Supabase's admin API.
 4. Import the real roster through the admin screen (M6), never the seed.

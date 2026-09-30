@@ -186,6 +186,7 @@ export function Field({
   htmlFor,
   hint,
   hintBeside = false,
+  action,
   error,
   optional,
   children,
@@ -196,6 +197,8 @@ export function Field({
   hint?: ReactNode;
   /** Show the hint on the label's line (saves height on short forms). */
   hintBeside?: boolean;
+  /** A small control on the label's line, like "Use phone number instead". */
+  action?: ReactNode;
   error?: string | null;
   optional?: boolean;
   children: ReactNode;
@@ -203,8 +206,8 @@ export function Field({
 }) {
   return (
     <div className={className}>
-      <div className={hintBeside ? "mb-1.5 flex flex-wrap items-baseline justify-between gap-x-3" : undefined}>
-        <label htmlFor={htmlFor} className={cx("field-label", hintBeside && "mb-0")}>
+      <div className={hintBeside || action ? "mb-1.5 flex flex-wrap items-baseline justify-between gap-x-3" : undefined}>
+        <label htmlFor={htmlFor} className={cx("field-label", (hintBeside || Boolean(action)) && "mb-0")}>
           {label}
           {optional ? <span className="ml-1 font-normal text-ink-500">(optional)</span> : null}
         </label>
@@ -213,6 +216,7 @@ export function Field({
             {hint}
           </span>
         ) : null}
+        {action}
       </div>
       {children}
       {hint && !hintBeside && !error ? (

@@ -85,16 +85,18 @@ A person can hold more than one role (for example, a coordinator is also an empl
 - Full audit trail of every status change.
 - Approved records are locked. Changes require returning the claim to the employee.
 
-### Sign-in (confirmed 2026-09-29)
+### Sign-in (confirmed 2026-09-29, email first since 2026-09-30)
 
-Staff sign in with their **phone number and a text message code** (no passwords, no work email
-needed):
+Staff sign in with their **email and a code** sent to it (no passwords). Anyone who'd rather use
+their phone taps **"Use phone number instead"** and gets a **text message code**. Email is the
+default because email codes are free, while texts cost money per message and aren't budgeted yet.
 
-1. Admin imports a staff roster (full name and phone number, from payroll). When someone signs in
-   and their full name and phone match a roster entry, they are in as soon as they enter the code.
-2. Anyone who doesn't match verifies their phone, then waits in an **access request** queue. The
-   admin checks their name against their phone number in Paychex and approves (setting their roles
-   and coordinator) or rejects, usually within a day or two.
+1. Admin imports a staff roster (full name, email and mobile number, from payroll). When someone
+   signs in and their full name and email (or phone) match a roster entry, they are in as soon as
+   they enter the code. Email and phone lead to the same account.
+2. Anyone who doesn't match verifies their email or phone, then waits in an **access request**
+   queue. The admin checks their name against that email or phone number in Paychex and approves
+   (setting their roles and coordinator) or rejects, usually within a day or two.
 
 Staff stay signed in on their device for a set time (a setting, 30 days to start) so they rarely
 need a new code.
@@ -119,9 +121,10 @@ need a new code.
 - Email notifications through a transactional email provider.
 - Distance calculation and address autocomplete through a maps API. Compare providers on cost
   and accuracy, cache results, and keep API keys server-side.
-- Sign-in: phone number + text code with roster matching (see "Sign-in" in section 4). Supabase
-  Auth supports phone codes through an SMS provider (Twilio, MessageBird or Vonage), which costs
-  a little per text.
+- Sign-in: email + code by default, or phone number + text code, with roster matching (see
+  "Sign-in" in section 4). Supabase Auth supports email codes (free; it can send through Resend
+  once SCCSC verifies a domain) and phone codes through an SMS provider (Twilio, MessageBird or
+  Vonage), which costs a little per text.
 
 ### Suggested data model direction
 
@@ -154,17 +157,17 @@ This is a starting point for discussion, not a final schema.
 3. How should trips that start from home be handled (commute miles are generally not reimbursable)?
 4. Exact reimbursement cadence and any cutoff for a given pay period.
 5. How coordinator assignments work (by employee, by department, delegation when someone is out).
-6. ~~Does SCCSC use Google Workspace for staff accounts?~~ **Decided:** phone number + text code,
-   with roster matching and admin approval (see section 4).
+6. ~~Does SCCSC use Google Workspace for staff accounts?~~ **Decided:** email + code (or phone
+   number + text code), with roster matching and admin approval (see section 4).
 7. Does the app need languages besides English?
 8. How long must records be kept?
 9. Does IT or leadership need to approve hosting staff data on Supabase and Vercel?
 10. ~~Is one claim per pay period right, or should each trip be submitted on its own?~~
     **Decided:** bundle when ready (see section 4).
-11. New: which payroll export will the roster come from (Paychex report columns), and should the
-    roster store work or personal mobile numbers?
-12. New: which SMS provider for sign-in codes, and is the per-text cost approved? (The demo uses
-    Twilio Verify, about $0.05 per sign-in, texting only Eden's phone.)
+11. New: which payroll export will the roster come from (Paychex report columns)? Does it have
+    staff emails, and should the roster store work or personal emails and mobile numbers?
+12. New: if phone sign-in stays, which SMS provider, and is the per-text cost approved? (Texts
+    aren't budgeted for now, so email is the default. Twilio Verify is about $0.05 per sign-in.)
 13. New: how old can a trip be when it's logged? (A setting, 365 days to start.)
 14. New: is the wording employees confirm when they submit right? ("These trips were for SCCSC
     business, in my own vehicle, and the dates, places and miles are correct. My normal commute
@@ -172,6 +175,8 @@ This is a starting point for discussion, not a final schema.
 15. New: amounts are rounded to the cent per trip, and the claim total is the sum. Is that how
     finance wants it, or should rounding happen once per claim?
 16. New: which claims can be approved in bulk? (A setting: under $100 with nothing flagged.)
+17. New: sending sign-in emails to staff (not just the demo inbox) needs a domain verified with the
+    email provider, for example `staff.sccsc.org`. Who manages sccsc.org's DNS?
 
 ## 9. Rollout plan
 

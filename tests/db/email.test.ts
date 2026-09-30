@@ -1,8 +1,8 @@
 import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 import { getCodeProvider } from "@/lib/auth/code-provider";
-import { maskEmail } from "@/lib/auth/email";
 import { signInCodeEmail } from "@/lib/auth/sign-in-email";
-import { createTestDb, rows, sql, type TestDb } from "../support/db";
+import type { Contact } from "@/lib/contact";
+import { createTestDb, type TestDb } from "../support/db";
 
 let t: TestDb;
 const ENV = { RESEND_API_KEY: "re_test_key", DEMO_EMAIL_TO: "demo.inbox@example.com" };
@@ -39,46 +39,56 @@ function fakeResend(...responses: { status: number; body?: object }[]) {
 }
 
 const codeIn = (email: Sent) => email.subject.match(/^(\d{6}) /)?.[1] ?? "";
+const email = (value: string): Contact => ({ kind: "email", value });
+const phone = (value: string): Contact => ({ kind: "phone", value });
 
 describe("sign-in codes by email through Resend", () => {
   it("is used when Resend is set up, and emails every demo code to DEMO_EMAIL_TO", async () => {
     useEmail();
-    const provider = getCodeProvider();
+    const provider = getCodeProvider("email");
     expect(provider.channel).toBe("email");
-    expect(provider.destinationFor("+19165550108")).toBe("demo.inbox@example.com");
+    expect(provider.destinationFor(email("felix.hartwell@example.org"))).toBe("demo.inbox@example.com");
 
     const calls = fakeResend();
-    const sent = await t.db.transaction((tx) => provider.send(tx, "+19165550108", { fullName: "Felix Hartwell" }));
+    const sent = await t.db.transaction((tx) => provider.send(tx, email("felix.hartwell@example.org"), { fullName: "Felix Hartwell" }));
     expect(sent).toEqual({ ok: true });
     expect(calls).toHaveLength(1);
     expect(calls[0].url).toBe("https://api.resend.com/emails");
     expect(calls[0].auth).toBe("Bearer re_test_key");
-    const email = calls[0].body;
-    expect(email.from).toBe("SCCSC Staff <onboarding@resend.dev>");
-    expect(email.to).toEqual(["demo.inbox@example.com"]);
-    expect(email.subject).toMatch(/^\d{6} is your SCCSC sign-in code$/);
-    expect(email.html).toContain(codeIn(email));
-    expect(email.html).toContain("Hi Felix");
-    expect(email.html).toContain("(•••) •••-0108");
-    expect(email.text).toContain(`sign-in code is: ${codeIn(email)}`);
+    const sentEmail = calls[0].body;
+    expect(sentEmail.from).toBe("SCCSC Staff <onboarding@resend.dev>");
+    expect(sentEmail.to).toEqual(["demo.inbox@example.com"]);
+    expect(sentEmail.subject).toMatch(/^\d{6} is your SCCSC sign-in code$/);
+    expect(sentEmail.html).toContain(codeIn(sentEmail));
+    expect(sentEmail.html).toContain("Hi Felix");
+    expect(sentEmail.html).toContain("fe•••@example.org");
+    expect(sentEmail.text).toContain(`sign-in code is: ${codeIn(sentEmail)}`);
   });
 
-  it("the emailed code signs in the number that was typed, once", async () => {
+  it("the emailed code works once, for what was typed", async () => {
     useEmail();
     const calls = fakeResend();
-    const provider = getCodeProvider();
-    await t.db.transaction((tx) => provider.send(tx, "+19165550109"));
+    const provider = getCodeProvider("email");
+    const typed = email("nina.typed@example.org");
+    await t.db.transaction((tx) => provider.send(tx, typed));
     const code = codeIn(calls[0].body);
 
-    expect(await t.db.transaction((tx) => provider.verify(tx, "+19165550109", "000000"))).toMatchObject({ ok: false });
-    const result = await t.db.transaction((tx) => provider.verify(tx, "+19165550109", code));
-    if (!result.ok) throw new Error(result.message);
-    const [user] = await rows<{ phone: string }>(t.db, sql`select phone from auth.users where id = ${result.userId}::uuid`);
-    expect(user.phone).toBe("19165550109");
-    expect(await t.db.transaction((tx) => provider.verify(tx, "+19165550109", code))).toEqual({
+    expect(await t.db.transaction((tx) => provider.verify(tx, typed, "000000"))).toMatchObject({ ok: false });
+    expect(await t.db.transaction((tx) => provider.verify(tx, typed, code))).toEqual({ ok: true });
+    expect(await t.db.transaction((tx) => provider.verify(tx, typed, code))).toEqual({
       ok: false,
       message: "Please ask for a new code.",
     });
+  });
+
+  it("without Twilio, phone sign-in codes go to the demo inbox too (texts cost money)", async () => {
+    useEmail();
+    const provider = getCodeProvider("phone");
+    expect(provider.channel).toBe("email");
+    expect(provider.destinationFor(phone("+19165550108"))).toBe("demo.inbox@example.com");
+    const calls = fakeResend();
+    await t.db.transaction((tx) => provider.send(tx, phone("+19165550108"), { fullName: "Felix Hartwell" }));
+    expect(calls[0].body.html).toContain("(•••) •••-0108");
   });
 
   it("explains a failed send in plain words", async () => {
@@ -88,36 +98,37 @@ describe("sign-in codes by email through Resend", () => {
       { status: 403, body: { name: "validation_error", message: "You can only send testing emails to your own email address" } },
       { status: 429, body: { name: "rate_limit_exceeded" } },
     );
-    const provider = getCodeProvider();
-    expect(await t.db.transaction((tx) => provider.send(tx, "+19165550110"))).toEqual({
+    const provider = getCodeProvider("email");
+    expect(await t.db.transaction((tx) => provider.send(tx, email("fails@example.org")))).toEqual({
       ok: false,
       message: "Sign-in emails aren't set up correctly. Please ask the app admin to check the Resend settings.",
     });
-    expect(await t.db.transaction((tx) => provider.send(tx, "+19165550110"))).toEqual({
+    expect(await t.db.transaction((tx) => provider.send(tx, email("fails@example.org")))).toEqual({
       ok: false,
       message: "Too many emails were sent just now. Please wait a minute and try again.",
     });
   });
 
-  it("stops after 5 emails an hour for one number, without calling Resend", async () => {
+  it("stops after 5 emails an hour for one address, without calling Resend", async () => {
     useEmail();
     const calls = fakeResend();
-    const provider = getCodeProvider();
+    const provider = getCodeProvider("email");
     const results = [];
-    for (let i = 0; i < 6; i++) results.push(await t.db.transaction((tx) => provider.send(tx, "+19165550178")));
+    for (let i = 0; i < 6; i++) results.push(await t.db.transaction((tx) => provider.send(tx, email("busy@example.org"))));
     expect(results.slice(0, 5).every((r) => r.ok)).toBe(true);
-    expect(results[5]).toEqual({ ok: false, message: "Too many codes were sent to this number. Please wait an hour and try again." });
+    expect(results[5]).toEqual({ ok: false, message: "Too many codes were sent. Please wait an hour and try again." });
     expect(calls).toHaveLength(5);
   });
 
   it("needs both settings, and refuses to run once a real database is attached", () => {
     useEmail({ RESEND_API_KEY: "re_test_key" });
-    expect(() => getCodeProvider()).toThrow(/RESEND_API_KEY and DEMO_EMAIL_TO/);
+    expect(() => getCodeProvider("email")).toThrow(/RESEND_API_KEY and DEMO_EMAIL_TO/);
     useEmail({ ...ENV, DEMO_EMAIL_TO: "not an email" });
-    expect(() => getCodeProvider()).toThrow(/DEMO_EMAIL_TO must be/);
+    expect(() => getCodeProvider("email")).toThrow(/DEMO_EMAIL_TO must be/);
     useEmail();
     vi.stubEnv("DATABASE_URL", "postgres://example/real");
-    expect(() => getCodeProvider()).toThrow(/DEMO_EMAIL_TO/);
+    expect(() => getCodeProvider("email")).toThrow(/DEMO_EMAIL_TO/);
+    expect(() => getCodeProvider("phone")).toThrow(/DEMO_EMAIL_TO/);
   });
 });
 
@@ -126,16 +137,11 @@ describe("the sign-in email", () => {
     const { html, text } = signInCodeEmail({
       code: "123456",
       fullName: `<img src=x onerror="alert(1)"> Smith`,
-      phoneMasked: "(•••) •••-0108",
+      contactMasked: "(•••) •••-0108",
       demo: true,
     });
     expect(html).not.toContain("<img src=x");
     expect(html).toContain("&lt;img src=x onerror=&quot;alert(1)&quot;&gt; Smith");
     expect(text).toContain("123456");
-  });
-
-  it("masks the demo inbox on screen", () => {
-    expect(maskEmail("demo.inbox@example.com")).toBe("de•••@example.com");
-    expect(maskEmail("a@example.com")).toBe("a•••@example.com");
   });
 });

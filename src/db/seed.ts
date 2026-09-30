@@ -1,6 +1,7 @@
 /**
- * Fake demo data. Every name, phone number, address and amount here is made up.
- * Phone numbers use the 555-01xx range, which is reserved for fiction.
+ * Fake demo data. Every name, email, phone number, address and amount here is made up.
+ * Phone numbers use the 555-01xx range, which is reserved for fiction, and emails use
+ * example.org, which is reserved for examples.
  *
  * Dates are relative to today so the demo always looks current. Claims are spread across every
  * status, with a matching history, so each screen has something to show.
@@ -20,9 +21,9 @@ export const DEMO = {
   owen: { staffId: "00000000-0000-4000-8000-000000000105", userId: "00000000-0000-4000-9000-000000000105" },
   hazel: { staffId: "00000000-0000-4000-8000-000000000106", userId: "00000000-0000-4000-9000-000000000106" },
   sam: { staffId: "00000000-0000-4000-8000-000000000107", userId: "00000000-0000-4000-9000-000000000107" },
-  /** On the roster but has never signed in: try signing in as "Felix Hartwell", (916) 555-0108. */
+  /** On the roster but has never signed in: try signing in as "Felix Hartwell", felix.hartwell@example.org. */
   felix: { staffId: "00000000-0000-4000-8000-000000000108", userId: null },
-  /** Verified their phone but isn't on the roster: waiting in the access request queue. */
+  /** Verified their email but isn't on the roster: waiting in the access request queue. */
   nora: { staffId: null, userId: "00000000-0000-4000-9000-000000000109" },
 } as const;
 
@@ -32,20 +33,23 @@ type Role = (typeof s.appRole.enumValues)[number];
 const PEOPLE: {
   key: Exclude<PersonKey, "nora">;
   name: string;
+  email: string;
   phone: string;
   roles: Role[];
   coordinator: PersonKey | null;
   program: string;
 }[] = [
-  { key: "rowan", name: "Rowan Ellery", phone: "+19165550101", roles: ["employee"], coordinator: "lena", program: "EXL" },
-  { key: "tessa", name: "Tessa Quill", phone: "+19165550102", roles: ["employee"], coordinator: "lena", program: "EXL" },
-  { key: "marcus", name: "Marcus Holloway", phone: "+19165550103", roles: ["employee"], coordinator: "owen", program: "YWF" },
-  { key: "lena", name: "Lena Fairbanks", phone: "+19165550104", roles: ["employee", "coordinator"], coordinator: "owen", program: "EXL" },
-  { key: "owen", name: "Owen Castellano", phone: "+19165550105", roles: ["employee", "coordinator"], coordinator: null, program: "YWF" },
-  { key: "hazel", name: "Hazel Brightwater", phone: "+19165550106", roles: ["employee", "finance"], coordinator: "owen", program: "ADM" },
-  { key: "sam", name: "Sam Whitlock", phone: "+19165550107", roles: ["employee", "admin"], coordinator: "owen", program: "ADM" },
-  { key: "felix", name: "Felix Hartwell", phone: "+19165550108", roles: ["employee"], coordinator: "lena", program: "ECV" },
+  { key: "rowan", name: "Rowan Ellery", email: "rowan.ellery@example.org", phone: "+19165550101", roles: ["employee"], coordinator: "lena", program: "EXL" },
+  { key: "tessa", name: "Tessa Quill", email: "tessa.quill@example.org", phone: "+19165550102", roles: ["employee"], coordinator: "lena", program: "EXL" },
+  { key: "marcus", name: "Marcus Holloway", email: "marcus.holloway@example.org", phone: "+19165550103", roles: ["employee"], coordinator: "owen", program: "YWF" },
+  { key: "lena", name: "Lena Fairbanks", email: "lena.fairbanks@example.org", phone: "+19165550104", roles: ["employee", "coordinator"], coordinator: "owen", program: "EXL" },
+  { key: "owen", name: "Owen Castellano", email: "owen.castellano@example.org", phone: "+19165550105", roles: ["employee", "coordinator"], coordinator: null, program: "YWF" },
+  { key: "hazel", name: "Hazel Brightwater", email: "hazel.brightwater@example.org", phone: "+19165550106", roles: ["employee", "finance"], coordinator: "owen", program: "ADM" },
+  { key: "sam", name: "Sam Whitlock", email: "sam.whitlock@example.org", phone: "+19165550107", roles: ["employee", "admin"], coordinator: "owen", program: "ADM" },
+  { key: "felix", name: "Felix Hartwell", email: "felix.hartwell@example.org", phone: "+19165550108", roles: ["employee"], coordinator: "lena", program: "ECV" },
 ];
+
+const NORA_EMAIL = "nora.pennington@example.org";
 
 const PROGRAMS = [
   { code: "EXL", name: "Expanded Learning (after school)" },
@@ -155,12 +159,17 @@ async function seed(tx: Tx) {
   await tx.insert(s.settings).values(DEFAULT_SETTINGS.map((x) => ({ ...x, value: x.value as object })));
 
   // People -------------------------------------------------------------------------------------
+  // Sign-in accounts for everyone who has signed in before, with their email and phone.
   for (const key of Object.keys(DEMO) as PersonKey[]) {
     const userId = DEMO[key].userId;
     const person = PEOPLE.find((p) => p.key === key);
-    const phone = person?.phone ?? "+19165550109";
-    if (userId) {
-      await tx.execute(sql`insert into auth.users (id, phone) values (${userId}::uuid, ${phone.slice(1)})`);
+    if (!userId) continue;
+    if (person) {
+      await tx.execute(
+        sql`insert into auth.users (id, email, phone) values (${userId}::uuid, ${person.email}, ${person.phone.slice(1)})`,
+      );
+    } else {
+      await tx.execute(sql`insert into auth.users (id, email) values (${userId}::uuid, ${NORA_EMAIL})`);
     }
   }
   for (const p of PEOPLE) {
@@ -171,7 +180,7 @@ async function seed(tx: Tx) {
       source: p.key === "felix" ? "roster" : "seed",
       defaultProgramId: programId(p.program),
     });
-    await tx.insert(s.staffPrivate).values({ staffId: DEMO[p.key].staffId!, phoneE164: p.phone });
+    await tx.insert(s.staffPrivate).values({ staffId: DEMO[p.key].staffId!, email: p.email, phoneE164: p.phone });
     await tx.insert(s.staffRoles).values(p.roles.map((role) => ({ staffId: DEMO[p.key].staffId!, role })));
   }
   for (const p of PEOPLE) {
@@ -185,7 +194,7 @@ async function seed(tx: Tx) {
     id: nextId(),
     userId: DEMO.nora.userId,
     fullName: "Nora Pennington",
-    phoneE164: "+19165550109",
+    email: NORA_EMAIL,
     createdAt: tsDaysAgo(1, 16, 20),
   });
 

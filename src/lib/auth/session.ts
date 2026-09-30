@@ -3,11 +3,12 @@ import "server-only";
 import { createHmac, timingSafeEqual } from "node:crypto";
 import { cookies } from "next/headers";
 import { hasHostedDatabase } from "@/db";
+import type { Contact } from "@/lib/contact";
 
 /**
  * Signed, http-only cookies.
  * - `sccsc_session`: who is signed in (their auth user id), for `session_days`.
- * - `sccsc_signin`: the name and phone typed on the sign-in page, while they enter the code.
+ * - `sccsc_signin`: the name and email or phone typed on the sign-in page, while they enter the code.
  */
 const SESSION_COOKIE = "sccsc_session";
 const PENDING_COOKIE = "sccsc_signin";
@@ -71,17 +72,19 @@ export async function clearSession() {
   (await cookies()).delete(SESSION_COOKIE);
 }
 
-export type PendingSignIn = { name: string; phone: string };
+export type PendingSignIn = { name: string; contact: Contact };
 
-export async function setPendingSignIn(pending: PendingSignIn) {
+export async function setPendingSignIn({ name, contact }: PendingSignIn) {
   const ttl = PENDING_MINUTES * 60;
-  (await cookies()).set(PENDING_COOKIE, signToken(pending, ttl), { ...cookieBase, maxAge: ttl });
+  const token = signToken({ name, kind: contact.kind, value: contact.value }, ttl);
+  (await cookies()).set(PENDING_COOKIE, token, { ...cookieBase, maxAge: ttl });
 }
 
 export async function getPendingSignIn(): Promise<PendingSignIn | null> {
-  const data = verifyToken<Partial<PendingSignIn>>((await cookies()).get(PENDING_COOKIE)?.value);
-  if (typeof data?.name !== "string" || typeof data?.phone !== "string") return null;
-  return { name: data.name, phone: data.phone };
+  const data = verifyToken<{ name?: unknown; kind?: unknown; value?: unknown }>((await cookies()).get(PENDING_COOKIE)?.value);
+  if (typeof data?.name !== "string" || typeof data.value !== "string") return null;
+  if (data.kind !== "email" && data.kind !== "phone") return null;
+  return { name: data.name, contact: { kind: data.kind, value: data.value } };
 }
 
 export async function clearPendingSignIn() {

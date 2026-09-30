@@ -42,7 +42,7 @@ export const getViewer = cache(async (): Promise<Viewer | null> => {
 export async function requireViewer(): Promise<Viewer> {
   const viewer = await getViewer();
   if (viewer) return viewer;
-  // Signed in (phone verified) but not active staff yet: show their access request status.
+  // Signed in (email or phone verified) but not active staff yet: show their access request status.
   if (await getSessionUserId()) redirect("/pending");
   redirect("/sign-in");
 }

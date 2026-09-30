@@ -30,19 +30,19 @@ export type SignInEmail = { subject: string; html: string; text: string };
 export function signInCodeEmail({
   code,
   fullName,
-  phoneMasked,
+  contactMasked,
   demo,
 }: {
   code: string;
   /** The name typed on the sign-in page. */
   fullName?: string;
-  /** The number typed, masked, e.g. "(•••) •••-0108". */
-  phoneMasked: string;
+  /** The email or number typed, masked, e.g. "fe•••@example.org" or "(•••) •••-0108". */
+  contactMasked: string;
   /** Demo: every code goes to one inbox. */
   demo: boolean;
 }): SignInEmail {
   const first = fullName?.trim().split(/\s+/)[0];
-  const who = fullName?.trim() ? `${fullName.trim()}, ${phoneMasked}` : phoneMasked;
+  const who = fullName?.trim() ? `${fullName.trim()}, ${contactMasked}` : contactMasked;
   const subject = `${code} is your SCCSC sign-in code`;
   const preheader = `Use ${code} to sign in to the mileage tracker. It works for ${CODE_TTL_MINUTES} minutes.`;
 

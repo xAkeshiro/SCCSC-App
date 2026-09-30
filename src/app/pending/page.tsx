@@ -53,8 +53,8 @@ export default async function PendingPage() {
             <div className="mt-4 flex gap-3 rounded-[var(--radius-card)] bg-status-returned-bg p-4 text-status-returned">
               <Clock3 aria-hidden className="mt-0.5 size-5 shrink-0" />
               <p>
-                <strong>Your account is waiting for approval.</strong> An admin will check your name and phone number against
-                payroll, usually within one or two business days.
+                <strong>Your account is waiting for approval.</strong> An admin will check your name and{" "}
+                {request?.email ? "email" : "phone number"} against payroll, usually within one or two business days.
               </p>
             </div>
             <p className="mt-4 text-ink-700">
