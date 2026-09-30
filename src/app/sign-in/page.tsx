@@ -81,18 +81,18 @@ export default async function SignInPage() {
       </aside>
 
       <main className="flex min-h-dvh flex-col justify-center bg-surface lg:min-h-0">
-        <div className="mx-auto flex w-full max-w-[31rem] flex-col gap-3 px-4 py-4 sm:gap-4 sm:px-6 tall:gap-5 tall:py-8 lg:[zoom:0.8]">
+        <div className="mx-auto flex w-full max-w-[31rem] flex-col gap-3 px-4 py-4 sm:gap-4 sm:px-6 roomy:gap-5 roomy:py-8 lg:[zoom:0.8]">
           <div className="flex items-center gap-2.5 lg:hidden">
             <Image src="/brand/xin-mark-square.svg" alt="" width={40} height={40} className="size-8" />
             <Wordmark compact />
           </div>
 
-          <div className="card p-6 shadow-[var(--shadow-card)] sm:px-9 sm:py-7 tall:sm:px-10 tall:sm:py-10">
+          <div className="card p-6 shadow-[var(--shadow-card)] sm:px-9 sm:py-7 roomy:sm:px-10 roomy:sm:py-10">
             {pending ? (
               <>
                 <Eyebrow>Check your phone</Eyebrow>
-                <h2 className="mt-2 text-3xl leading-tight sm:mt-3 sm:text-4xl tall:mt-4">Enter your code</h2>
-                <p className="mt-2 text-ink-500 sm:mt-3 tall:mt-4">
+                <h2 className="mt-2 text-3xl leading-tight sm:mt-3 sm:text-4xl roomy:mt-4">Enter your code</h2>
+                <p className="mt-2 text-ink-500 sm:mt-3 roomy:mt-4">
                   We texted a code to <strong className="text-ink">{maskPhone(pending.phone)}</strong>. It works for 10 minutes.
                 </p>
                 {demoCode ? (
@@ -120,14 +120,14 @@ export default async function SignInPage() {
             ) : (
               <>
                 <Eyebrow>Welcome to the Center</Eyebrow>
-                <h2 className="mt-2 text-3xl leading-tight sm:mt-3 sm:text-4xl tall:mt-4">
+                <h2 className="mt-2 text-3xl leading-tight sm:mt-3 sm:text-4xl roomy:mt-4">
                   <BrushText>Sign in</BrushText>
                 </h2>
-                <p className="mt-2 text-ink-500 sm:mt-3 tall:mt-4">No password. We&apos;ll text you a code.</p>
-                <div className="mt-5 sm:mt-6 tall:mt-8">
+                <p className="mt-2 text-ink-500 sm:mt-3 roomy:mt-4">No password. We&apos;ll text you a code.</p>
+                <div className="mt-5 sm:mt-6 roomy:mt-8">
                   <RequestCodeForm />
                 </div>
-                <p className="mt-5 border-t border-ink-100 pt-4 text-sm text-ink-500 tall:mt-7 tall:pt-5">
+                <p className="mt-5 border-t border-ink-100 pt-4 text-sm text-ink-500 roomy:mt-7 roomy:pt-5">
                   <span className="font-semibold text-ink-700">New here?</span> Sign in the same way. An admin will approve
                   you within a day or two.
                 </p>
