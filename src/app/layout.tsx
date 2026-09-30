@@ -1,5 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { EB_Garamond, Instrument_Sans, Onest } from "next/font/google";
+import { Intro } from "@/components/intro/intro";
+import { INTRO_SCRIPT } from "@/components/intro/script";
 import "./globals.css";
 
 const display = Onest({ variable: "--font-onest", subsets: ["latin"] });
@@ -22,8 +24,15 @@ export const viewport: Viewport = {
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
-    <html lang="en" className={`${display.variable} ${sans.variable} ${serif.variable}`}>
-      <body className="flex min-h-dvh flex-col">{children}</body>
+    // The intro script may mark <html> before React starts, hence suppressHydrationWarning.
+    <html lang="en" className={`${display.variable} ${sans.variable} ${serif.variable}`} suppressHydrationWarning>
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: INTRO_SCRIPT }} />
+      </head>
+      <body className="flex min-h-dvh flex-col">
+        <Intro />
+        {children}
+      </body>
     </html>
   );
 }

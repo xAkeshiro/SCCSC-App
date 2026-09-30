@@ -263,6 +263,9 @@ This is a starting point for discussion, not a final schema.
 - Type (updated 2026-09-29 to match sccsc.org): Onest for headings, Instrument Sans for UI text.
   EB Garamond only for the wordmark (a stand-in for the logo serif).
 - Logo: the 心 mark in a red square, traced to vector from the SCCSC logo, in `assets/brand/`:
+  - `thecenter-logo.svg`: the full "thecenter / sacramento chinese community service center" logo,
+    traced to vector from the original artwork (2026-09-30). Used on printed claims and batches and
+    in the opening animation
   - `xin-mark-square.svg`: red square with white 心 (matches the official logo)
   - `xin-mark-rounded.svg`: rounded corners, for app icons and the PWA manifest
   - `xin-glyph-white.svg`: the white 心 alone, for placing on red backgrounds
@@ -271,3 +274,7 @@ This is a starting point for discussion, not a final schema.
     for the installable app later)
 - Wordmark style (renamed 2026-09-30): lowercase, small charcoal "reimbursement" next to a larger red "tracker",
   echoing the "thecenter" logo.
+- Opening animation (added 2026-09-30): the full logo on white. The red seal stamps in, 心 is written
+  stroke by stroke, "thecenter" and the name follow, and it fades into the app, in about 3 seconds.
+  It plays once when the app is opened in a browser tab, a tap skips it, and it never plays for
+  people whose device is set to reduce motion (`src/components/intro/`).

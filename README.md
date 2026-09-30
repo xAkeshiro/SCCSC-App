@@ -21,7 +21,8 @@ filled with fake demo data on first start. Delete `.data/` to start over.
 
 ## Demo walkthrough (about 5 minutes)
 
-On the sign-in page, pick a made-up person from the **Demo** dropdown and press **Explore** to skip the code.
+The app opens with a short logo animation (once per browser tab; tap to skip). On the sign-in page,
+pick a made-up person from the **Demo** dropdown and press **Explore** to skip the code.
 
 1. **Rowan Ellery (employee).** The home page shows what's not submitted, waiting, approved
    and paid. Press **Log a trip**: pick Main office to Cedar Grove, tick Round trip, and the
@@ -139,6 +140,7 @@ src/
     (app)/                 signed-in pages: home, trips, claims, phone bill, review, finance, admin, help
     print/                 printable claim and batch
   components/              UI building blocks in the sccsc.org style
+    intro/                 the opening animation (the logo, once per browser tab)
   db/
     schema.ts              tables (Drizzle)
     index.ts               connection, demo bootstrap and seeding
@@ -154,7 +156,7 @@ drizzle/                   migrations (0001_security.sql: RLS, audited transitio
 tests/                     unit and database tests (Vitest)
 e2e/                       browser tests (Playwright)
 docs/                      brief, architecture, decisions
-assets/brand/              logo mark (copies served from public/brand/)
+assets/brand/              logo mark and full logo (copies served from public/brand/)
 ```
 
 ## What's next

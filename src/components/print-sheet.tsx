@@ -13,7 +13,7 @@ export function PrintSheet({ title, subtitle, children }: { title: string; subti
       </div>
       <header className="flex items-start justify-between gap-6 border-b-2 border-brand-600 pb-4">
         <div className="flex items-center gap-3">
-          <Image src="/brand/sccsc-logo.png" alt="The Center: Sacramento Chinese Community Service Center" width={233} height={50} className="h-11 w-auto" />
+          <Image src="/brand/thecenter-logo.svg" alt="The Center: Sacramento Chinese Community Service Center" width={950} height={254} className="h-11 w-auto" />
         </div>
         <div className="text-right">
           <h1 className="font-display text-xl font-semibold">{title}</h1>

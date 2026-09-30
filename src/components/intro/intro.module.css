@@ -1,0 +1,191 @@
+/*
+ * The opening animation (about 3 seconds):
+ *   0.05s  the red seal stamps in
+ *   0.45s  心 is written: left dot, hook, middle dot, right dot
+ *   0.90s  "the" slides in, then "center" rises letter by letter
+ *   1.50s  "sacramento chinese / community service center" fades up
+ *   2.50s  the white screen fades away into the app
+ * Letters get their place in the word as --i for the stagger.
+ */
+
+.screen {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: grid;
+  place-items: center;
+  padding: 1rem 1rem 8vh;
+  background: #fff;
+  touch-action: none;
+  animation: leave 0.4s ease-in 2.5s forwards;
+}
+
+/* Tapped or Escape: fade out now (its own keyframes, so it starts fresh instead of reusing
+   the clock of the running "leave"). */
+.skipped {
+  animation: skip 0.2s ease-in forwards;
+}
+
+:global(html[data-intro="done"]) .screen {
+  display: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .screen {
+    display: none;
+  }
+}
+
+@media print {
+  .screen {
+    display: none;
+  }
+}
+
+.logo {
+  width: min(86vw, 36rem);
+  height: auto;
+  overflow: visible;
+  animation: grow 0.4s ease-in 2.5s forwards;
+}
+
+.skipped .logo {
+  animation: none;
+}
+
+.seal {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: stamp 0.45s cubic-bezier(0.2, 0.8, 0.2, 1) 0.05s both;
+}
+
+/* Each stroke of 心 is revealed by a brush line drawn along it (a mask). */
+.brush {
+  fill: none;
+  stroke: #fff;
+  stroke-dasharray: 1 1;
+  stroke-dashoffset: 1;
+  animation: write var(--for) cubic-bezier(0.45, 0, 0.3, 1) var(--at) both;
+}
+
+mask:nth-of-type(1) .brush {
+  --at: 0.45s;
+  --for: 0.2s;
+}
+
+mask:nth-of-type(2) .brush {
+  --at: 0.66s;
+  --for: 0.46s;
+}
+
+mask:nth-of-type(3) .brush {
+  --at: 1.14s;
+  --for: 0.17s;
+}
+
+mask:nth-of-type(4) .brush {
+  --at: 1.32s;
+  --for: 0.17s;
+}
+
+.inked {
+  animation: show 0.01s linear 1.55s both;
+}
+
+.the {
+  animation: slide 0.5s cubic-bezier(0.2, 0.7, 0.2, 1) calc(0.9s + var(--i) * 0.07s) both;
+}
+
+.center {
+  animation: rise 0.6s cubic-bezier(0.2, 0.8, 0.25, 1.15) calc(1s + var(--i) * 0.06s) both;
+}
+
+.name {
+  animation: fade-up 0.55s ease-out calc(1.5s + var(--i) * 0.12s) both;
+}
+
+@keyframes stamp {
+  0% {
+    opacity: 0;
+    transform: scale(1.4);
+  }
+  60% {
+    opacity: 1;
+    transform: scale(0.96);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes write {
+  from {
+    stroke-dashoffset: 1;
+  }
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+@keyframes show {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes slide {
+  from {
+    opacity: 0;
+    transform: translateX(-18px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translateY(40px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes grow {
+  to {
+    transform: scale(1.03);
+  }
+}
+
+@keyframes leave {
+  to {
+    opacity: 0;
+    visibility: hidden;
+  }
+}
+
+@keyframes skip {
+  to {
+    opacity: 0;
+    visibility: hidden;
+  }
+}

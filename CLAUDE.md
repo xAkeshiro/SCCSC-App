@@ -97,7 +97,9 @@ The look follows the live sccsc.org landing page (see `src/app/globals.css` for 
 - Details from sccsc.org: red-heart eyebrows above headings, a pink brush stroke under one word
   of a heading, big red stat numbers, white cards with soft shadows, 8px button corners, dark
   top bar and footer.
-- Logo mark (心 in a red square) is in `assets/brand/` (copies in `public/brand/`).
+- Logo mark (心 in a red square) and the full "thecenter" logo (`thecenter-logo.svg`, traced from the
+  original) are in `assets/brand/` (copies in `public/brand/`). The opening animation is in
+  `src/components/intro/`.
 
 <!-- BEGIN:nextjs-agent-rules -->
 
