@@ -274,8 +274,10 @@ This is a starting point for discussion, not a final schema.
     for the installable app later)
 - Wordmark style (renamed 2026-09-30): lowercase, small charcoal "reimbursement" next to a larger red "tracker",
   echoing the "thecenter" logo.
-- Opening animation (added 2026-09-30): the full logo on white. The red seal stamps in, 心 is written
-  stroke by stroke, "thecenter" and the name follow, and it fades into the app, in about 3 seconds.
+- Opening animation (added 2026-09-30): the full logo on white. The red seal stamps in, large, in
+  the middle of the screen, 心 is written stroke by stroke, then the seal glides to its place on the
+  left as "thecenter" and the name come out beside it, and it fades into the app, in about 3.5
+  seconds.
   It plays once when the app is opened in a browser tab, a tap skips it, and it never plays for
   people whose device is set to reduce motion (`src/components/intro/`). The "sacramento chinese /
   community service center" lines are set in Instrument Sans (the app's text font) so they're easy

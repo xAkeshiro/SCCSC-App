@@ -1,10 +1,11 @@
 /*
- * The opening animation (about 3 seconds):
- *   0.05s  the red seal stamps in
- *   0.45s  心 is written: left dot, hook, middle dot, right dot
- *   0.90s  "the" slides in, then "center" rises letter by letter
- *   1.50s  "sacramento chinese / community service center" fades up
- *   2.50s  the white screen fades away into the app
+ * The opening animation (about 3.5 seconds):
+ *   0.05s  the red seal stamps in, large, in the middle of the screen
+ *   0.40s  心 is written: left dot, hook, middle dot, right dot
+ *   1.45s  the seal glides to its place on the left of the logo
+ *   1.75s  "the" slides out from behind it, then "center" rises letter by letter
+ *   2.25s  "sacramento chinese / community service center" fades up
+ *   3.10s  the white screen fades away into the app
  * Letters get their place in the word as --i for the stagger.
  */
 
@@ -17,7 +18,7 @@
   padding: 1rem 1rem 8vh;
   background: #fff;
   touch-action: none;
-  animation: leave 0.4s ease-in 2.5s forwards;
+  animation: leave 0.4s ease-in 3.1s forwards;
 }
 
 /* Tapped or Escape: fade out now (its own keyframes, so it starts fresh instead of reusing
@@ -46,11 +47,21 @@
   width: min(86vw, 36rem);
   height: auto;
   overflow: visible;
-  animation: grow 0.4s ease-in 2.5s forwards;
+  animation: grow 0.4s ease-in 3.1s forwards;
 }
 
 .skipped .logo {
   animation: none;
+}
+
+/*
+ * Until 1.45s the seal sits 1.4 times its size at the middle of the logo (475, 127 in the
+ * 950 × 254 box; its own middle is at 92.25, 91.25), then glides into place.
+ */
+.travel {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: travel 0.6s cubic-bezier(0.65, 0, 0.35, 1) 1.45s both;
 }
 
 .seal {
@@ -69,35 +80,35 @@
 }
 
 mask:nth-of-type(1) .brush {
-  --at: 0.45s;
-  --for: 0.2s;
+  --at: 0.4s;
+  --for: 0.18s;
 }
 
 mask:nth-of-type(2) .brush {
-  --at: 0.66s;
-  --for: 0.46s;
+  --at: 0.6s;
+  --for: 0.42s;
 }
 
 mask:nth-of-type(3) .brush {
-  --at: 1.14s;
-  --for: 0.17s;
+  --at: 1.04s;
+  --for: 0.15s;
 }
 
 mask:nth-of-type(4) .brush {
-  --at: 1.32s;
-  --for: 0.17s;
+  --at: 1.21s;
+  --for: 0.15s;
 }
 
 .inked {
-  animation: show 0.01s linear 1.55s both;
+  animation: show 0.01s linear 1.4s both;
 }
 
 .the {
-  animation: slide 0.5s cubic-bezier(0.2, 0.7, 0.2, 1) calc(0.9s + var(--i) * 0.07s) both;
+  animation: slide 0.5s cubic-bezier(0.2, 0.7, 0.2, 1) calc(1.75s + var(--i) * 0.07s) both;
 }
 
 .center {
-  animation: rise 0.6s cubic-bezier(0.2, 0.8, 0.25, 1.15) calc(1s + var(--i) * 0.06s) both;
+  animation: rise 0.6s cubic-bezier(0.2, 0.8, 0.25, 1.15) calc(1.85s + var(--i) * 0.06s) both;
 }
 
 .name {
@@ -106,7 +117,7 @@ mask:nth-of-type(4) .brush {
   font-weight: 500;
   letter-spacing: 0.01em;
   fill: #333;
-  animation: fade-up 0.55s ease-out calc(1.5s + var(--i) * 0.12s) both;
+  animation: fade-up 0.55s ease-out calc(2.25s + var(--i) * 0.12s) both;
 }
 
 @keyframes stamp {
@@ -121,6 +132,15 @@ mask:nth-of-type(4) .brush {
   100% {
     opacity: 1;
     transform: scale(1);
+  }
+}
+
+@keyframes travel {
+  from {
+    transform: translate(382.75px, 35.75px) scale(1.4);
+  }
+  to {
+    transform: none;
   }
 }
 
@@ -145,7 +165,7 @@ mask:nth-of-type(4) .brush {
 @keyframes slide {
   from {
     opacity: 0;
-    transform: translateX(-18px);
+    transform: translateX(-40px);
   }
   to {
     opacity: 1;
