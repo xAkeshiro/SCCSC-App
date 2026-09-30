@@ -163,7 +163,8 @@ This is a starting point for discussion, not a final schema.
     **Decided:** bundle when ready (see section 4).
 11. New: which payroll export will the roster come from (Paychex report columns), and should the
     roster store work or personal mobile numbers?
-12. New: which SMS provider for sign-in codes, and is the per-text cost approved?
+12. New: which SMS provider for sign-in codes, and is the per-text cost approved? (The demo uses
+    Twilio Verify, about $0.05 per sign-in, texting only Eden's phone.)
 13. New: how old can a trip be when it's logged? (A setting, 365 days to start.)
 14. New: is the wording employees confirm when they submit right? ("These trips were for SCCSC
     business, in my own vehicle, and the dates, places and miles are correct. My normal commute

@@ -1,14 +1,17 @@
 /**
  * Sign-in codes sent by text message.
  *
- * The demo provider stores a hashed code in demo.verification_codes and hands the code back so
- * the sign-in page can show it ("demo text message"). When the app moves to Supabase, a provider
- * backed by Supabase Auth's phone sign-in (signInWithOtp / verifyOtp) replaces it; the rest of
- * the sign-in flow stays the same.
+ * Two providers, picked by getCodeProvider() (./code-provider.ts):
+ * - Twilio Verify (./twilio.ts), when TWILIO_* is set: a real text message. For the demo,
+ *   DEMO_SMS_TO sends every code to one phone (Eden's), whatever number was typed.
+ * - On-screen (below), otherwise: stores a hashed code in demo.verification_codes and hands it
+ *   back so the sign-in page can show it ("demo text message").
+ * When the app moves to Supabase, its phone sign-in (which can use Twilio Verify) takes over;
+ * the rest of the sign-in flow stays the same.
  */
 import { createHash, randomInt } from "node:crypto";
 import { sql } from "drizzle-orm";
-import { hasHostedDatabase, type Tx } from "@/db";
+import type { Tx } from "@/db";
 import { rows } from "@/db/with-user";
 
 export type SendResult = { ok: true; demoCode?: string } | { ok: false; message: string };
@@ -17,6 +20,8 @@ export type VerifyResult = { ok: true; userId: string } | { ok: false; message: 
 export type CodeProvider = {
   /** Shows the code on screen instead of texting it. */
   showsCodeOnScreen: boolean;
+  /** The phone the code is actually sent to for someone who typed `phoneE164`. */
+  destinationFor(phoneE164: string): string;
   send(tx: Tx, phoneE164: string): Promise<SendResult>;
   /** On success, returns the sign-in account (auth user) for that phone, creating it if needed. */
   verify(tx: Tx, phoneE164: string, code: string): Promise<VerifyResult>;
@@ -25,6 +30,8 @@ export type CodeProvider = {
 export const CODE_TTL_MINUTES = 10;
 export const MAX_ATTEMPTS = 5;
 export const MAX_SENDS_PER_HOUR = 5;
+/** Real texts cost money and all go to one phone in the demo: cap them across everyone. */
+export const MAX_TEXTS_PER_HOUR_TOTAL = 20;
 
 function hashCode(phone: string, code: string) {
   return createHash("sha256").update(`${phone}:${code}`).digest("hex");
@@ -35,8 +42,44 @@ export function authPhone(phoneE164: string) {
   return phoneE164.replace(/^\+/, "");
 }
 
+/** The sign-in account (auth user) for a verified phone, created on first sign-in. */
+export async function upsertAuthUser(tx: Tx, phoneE164: string): Promise<string> {
+  const [user] = await rows<{ id: string }>(
+    tx,
+    sql`insert into auth.users (phone, last_sign_in_at) values (${authPhone(phoneE164)}, now())
+        on conflict (phone) do update set last_sign_in_at = now()
+        returning id`,
+  );
+  return user.id;
+}
+
+/**
+ * Counts a send against an hourly limit for `key` (a phone number, or "*" for everyone).
+ * Returns false, without counting, when the limit is already reached. Demo database only.
+ */
+export async function allowSend(tx: Tx, key: string, maxPerHour: number): Promise<boolean> {
+  const id = `limit:${key}`;
+  const [row] = await rows<{ window_started_at: string; sent_in_window: number }>(
+    tx,
+    sql`select window_started_at, sent_in_window from demo.verification_codes where phone = ${id} for update`,
+  );
+  if (!row) {
+    await tx.execute(sql`insert into demo.verification_codes (phone, code_hash, expires_at) values (${id}, '', now())`);
+    return true;
+  }
+  const windowOpen = Date.now() - new Date(row.window_started_at).getTime() < 60 * 60 * 1000;
+  if (windowOpen && row.sent_in_window >= maxPerHour) return false;
+  await tx.execute(sql`
+    update demo.verification_codes
+       set window_started_at = case when ${windowOpen} then window_started_at else now() end,
+           sent_in_window = case when ${windowOpen} then sent_in_window + 1 else 1 end
+     where phone = ${id}`);
+  return true;
+}
+
 export const demoCodeProvider: CodeProvider = {
   showsCodeOnScreen: true,
+  destinationFor: (phone) => phone,
 
   async send(tx, phone) {
     const [existing] = await rows<{ window_started_at: string; sent_in_window: number }>(
@@ -82,21 +125,6 @@ export const demoCodeProvider: CodeProvider = {
     }
     // One use only.
     await tx.execute(sql`delete from demo.verification_codes where phone = ${phone}`);
-    const [user] = await rows<{ id: string }>(
-      tx,
-      sql`insert into auth.users (phone, last_sign_in_at) values (${authPhone(phone)}, now())
-          on conflict (phone) do update set last_sign_in_at = now()
-          returning id`,
-    );
-    return { ok: true, userId: user.id };
+    return { ok: true, userId: await upsertAuthUser(tx, phone) };
   },
 };
-
-export function getCodeProvider(): CodeProvider {
-  // The demo provider shows codes on screen, which would let anyone sign in as anyone.
-  // It must never run against real data: a real SMS provider comes with Supabase (M7).
-  if (hasHostedDatabase()) {
-    throw new Error("No text message provider is set up. The demo sign-in code provider can't be used with a real database.");
-  }
-  return demoCodeProvider;
-}

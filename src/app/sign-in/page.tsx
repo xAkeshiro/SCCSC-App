@@ -8,6 +8,7 @@ import { isDemoData } from "@/db";
 import { staff, staffRoles } from "@/db/schema";
 import { DEMO } from "@/db/seed";
 import { withSystem } from "@/db/with-user";
+import { getCodeProvider } from "@/lib/auth/code-provider";
 import { getSessionUserId, getPendingSignIn } from "@/lib/auth/session";
 import { getViewer, type Role } from "@/lib/auth/viewer";
 import { maskPhone } from "@/lib/phone";
@@ -44,6 +45,14 @@ export default async function SignInPage() {
 
   const pending = await getPendingSignIn();
   const demoCode = pending ? (await cookies()).get("sccsc_demo_code")?.value : undefined;
+  // In the texting demo (DEMO_SMS_TO), every code goes to one phone rather than the one typed.
+  let sentTo = pending?.phone ?? null;
+  try {
+    if (pending) sentTo = getCodeProvider().destinationFor(pending.phone);
+  } catch {
+    // Misconfigured texting: the send step already showed the error.
+  }
+  const sentElsewhere = Boolean(pending && sentTo !== pending.phone);
   const people = await demoPeople();
 
   return (
@@ -93,8 +102,18 @@ export default async function SignInPage() {
                 <Eyebrow>Check your phone</Eyebrow>
                 <h2 className="mt-2 text-3xl leading-tight sm:mt-3 sm:text-4xl roomy:mt-4">Enter your code</h2>
                 <p className="mt-2 text-ink-500 sm:mt-3 roomy:mt-4">
-                  We texted a code to <strong className="text-ink">{maskPhone(pending.phone)}</strong>. It works for 10 minutes.
+                  We texted a code to <strong className="text-ink">{maskPhone(sentTo ?? pending.phone)}</strong>. It works for 10
+                  minutes.
                 </p>
+                {sentElsewhere ? (
+                  <div className="mt-5 flex gap-3 rounded-[var(--radius-card)] bg-ink-50 p-4" role="status">
+                    <MessageSquareText aria-hidden className="mt-0.5 size-5 shrink-0 text-brand-600" />
+                    <p className="text-sm">
+                      <span className="font-semibold">Demo:</span> every code goes to the demo phone, not the number you typed.
+                      You&apos;ll sign in as the person whose number you entered.
+                    </p>
+                  </div>
+                ) : null}
                 {demoCode ? (
                   <div className="mt-5 flex gap-3 rounded-[var(--radius-card)] bg-ink-50 p-4" role="status">
                     <MessageSquareText aria-hidden className="mt-0.5 size-5 shrink-0 text-brand-600" />

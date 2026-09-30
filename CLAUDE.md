@@ -36,15 +36,16 @@ Architecture, data model, security model and milestones: @docs/ARCHITECTURE.md
 - Drizzle ORM. PGlite (built-in Postgres) for the demo and local dev; Supabase Postgres later.
   Same migrations and RLS policies on both.
 - Sign-in: phone number + text code. Roster match gets in right away; anyone else waits for an
-  admin to approve (checked against Paychex). Demo mode shows the code on screen.
-- Deployed on Vercel (not yet).
+  admin to approve (checked against Paychex). Demo mode shows the code on screen, or texts it
+  through Twilio Verify to one phone (`DEMO_SMS_TO`) when the `TWILIO_*` variables are set.
+- Deployed on Vercel: project `sccsc-app` (demo mode, fake data), from this repo's default branch.
 - Later: installable **PWA** (same features as the site), SMS/email notifications, a
   maps/distance API (provider to be chosen, consider cost).
 
 ## Commands
 
 - `npm run dev`: app at http://localhost:3000 with fake data saved in `.data/pglite`
-  (delete that folder to reset). The sign-in page lists demo people to sign in as.
+  (delete that folder to reset). The sign-in page has a demo dropdown to sign in as anyone.
 - `npm test`: unit tests and database security tests (in-memory Postgres).
 - `npm run e2e`: Playwright end-to-end tests (builds the app, fresh demo database).
 - `npm run typecheck`, `npm run lint`.

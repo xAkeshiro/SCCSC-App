@@ -6,7 +6,7 @@ import { redirect } from "next/navigation";
 import { isDemoData } from "@/db";
 import { staff } from "@/db/schema";
 import { withSystem } from "@/db/with-user";
-import { getCodeProvider } from "@/lib/auth/codes";
+import { getCodeProvider } from "@/lib/auth/code-provider";
 import {
   clearPendingSignIn,
   clearSession,

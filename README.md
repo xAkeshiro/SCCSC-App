@@ -53,6 +53,33 @@ On the sign-in page, pick a made-up person from the **Demo** dropdown and press 
 
 All names, phone numbers (555-01xx), addresses and amounts are made up.
 
+## Real sign-in texts for the demo
+
+By default the demo shows the sign-in code on screen. To have codes texted to one phone (yours)
+instead, whatever number is typed, use Twilio Verify. A free trial account is enough, because a
+trial can text the phone numbers you verify with Twilio.
+
+1. Sign up at [twilio.com](https://www.twilio.com/try-twilio) and verify your own mobile number.
+2. In the Twilio Console, open **Verify → Services → Create new**. Name it **SCCSC Staff** (the text
+   says "Your SCCSC Staff verification code is: 123456") and turn on **SMS**. Copy the Service SID
+   (starts with `VA`).
+3. From the Console home page, copy the **Account SID** (starts with `AC`) and **Auth Token**.
+4. In Vercel, open **sccsc-app → Settings → Environment Variables** and add:
+
+   | Name | Value |
+   |---|---|
+   | `TWILIO_ACCOUNT_SID` | `AC…` |
+   | `TWILIO_AUTH_TOKEN` | the auth token (mark it Sensitive) |
+   | `TWILIO_VERIFY_SERVICE_SID` | `VA…` |
+   | `DEMO_SMS_TO` | your mobile, like `+19165551234` |
+
+5. Redeploy (Deployments → ⋯ → Redeploy). For local dev, put the same lines in `.env.local`.
+
+Then sign in with any name and number, for example Felix Hartwell, (916) 555-0108. The code arrives
+on your phone, and you sign in as the person whose number you typed. The demo dropdown still works
+without a code. Limits: 5 texts per number per hour and 20 in total per hour, on top of Twilio's own
+limits. Twilio charges about $0.05 per verification, which the trial credit covers.
+
 ## Scripts
 
 | Command | What it does |
