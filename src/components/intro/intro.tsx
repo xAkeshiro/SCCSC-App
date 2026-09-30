@@ -6,9 +6,8 @@ import { XIN_STROKES } from "./logo-paths";
 import { SEEN_KEY } from "./script";
 
 /**
- * The opening animation: the SCCSC logo on white. The red seal stamps in, large, in the middle
- * of the screen, 心 is written stroke by stroke, then the seal glides to its place on the left as
- * "thecenter" and the name come out beside it, and the screen fades into the app.
+ * The opening animation: the SCCSC logo on white. The red seal stamps in, 心 is written stroke by
+ * stroke, then "thecenter" and the name follow, and the screen fades into the app.
  *
  * It plays once when the app is opened in a tab (not on each page), is skipped with a tap or
  * Escape, and never plays for people who ask their device for less motion. The script in the root
@@ -69,21 +68,18 @@ export function Intro() {
             {line}
           </text>
         ))}
-        {/* The seal starts large in the middle, then glides to its place in the logo. It's drawn
-            last, so the words come out from behind it. */}
-        <g className={styles.travel}>
-          <g transform="translate(2 1) scale(1.9835)">
-            <g className={styles.seal}>
-              <rect width="91" height="91" fill="#D0112B" />
-              {/* The thin white line inside the square, as in the original logo. */}
-              <rect x="6.55" y="6.55" width="77.9" height="77.9" fill="none" stroke="#fff" strokeWidth="0.9" />
-              <g fill="#fff">
-                {XIN_STROKES.map((s, i) => (
-                  <path key={s.name} d={s.d} mask={`url(#intro-brush-${i})`} />
-                ))}
-                {/* The finished character, in case a browser can't animate the brush masks. */}
-                <path d={XIN_STROKES.map((s) => s.d).join("")} className={styles.inked} />
-              </g>
+        {/* The seal, in its place on the left of the logo. */}
+        <g transform="translate(2 1) scale(1.9835)">
+          <g className={styles.seal}>
+            <rect width="91" height="91" fill="#D0112B" />
+            {/* The thin white line inside the square, as in the original logo. */}
+            <rect x="6.55" y="6.55" width="77.9" height="77.9" fill="none" stroke="#fff" strokeWidth="0.9" />
+            <g fill="#fff">
+              {XIN_STROKES.map((s, i) => (
+                <path key={s.name} d={s.d} mask={`url(#intro-brush-${i})`} />
+              ))}
+              {/* The finished character, in case a browser can't animate the brush masks. */}
+              <path d={XIN_STROKES.map((s) => s.d).join("")} className={styles.inked} />
             </g>
           </g>
         </g>
