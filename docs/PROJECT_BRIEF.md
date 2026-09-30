@@ -122,10 +122,45 @@ mileage.
 
 ## 5. Future phases (ideas, not committed)
 
-- More reimbursement types (phone bills were the second), each defined as a new request type: receipts upload, categories,
-  and per-type approval rules.
-- Staff features such as a forms library, announcements, or a staff directory. Scope to be decided
-  with Eden and SCCSC leadership.
+### Agreed direction (2026-09-30), to plan after the current work
+
+The goal is a central place staff open often, not only a reimbursement portal.
+
+1. **Staff home base.** Announcements from the director or HR, with "I've read this" confirmations
+   for policy changes (and a list of who hasn't). A searchable documents and forms library
+   (handbook, policies, emergency procedures, forms). Quick links to what staff already use
+   (Paychex Flex, benefits, email, shared drives). A calendar (holidays, pay dates, reimbursement
+   deadlines, trainings).
+2. **More requests on the same approval flow**, each a new request type: out-of-pocket purchases
+   with a receipt photo, parking and tolls on trips, approval before spending (purchases, trainings,
+   conferences), vehicle, equipment or key sign-out and return, and IT or building problem reports.
+3. **Required trainings and documents, managed by Recruitment staff.** They assign what each person
+   needs (for example mandated reporter training, CPR and first aid, a TB test, Live Scan clearance,
+   and a driver's license and car insurance for anyone claiming mileage), track what's done and
+   when it expires, and remind people. Staff upload their certificates. Needs a new Recruitment (or
+   HR) role.
+4. **Email reminders through Resend, controlled by Recruitment staff**: what's sent, to whom and
+   when (for example "Your CPR card expires in 30 days", "Phone bill claims open October 1").
+   Needs a verified sending domain (open question 17).
+5. **Other languages** (to propose): the app in the languages staff read most comfortably (open
+   question 7).
+6. **Paychex, linked rather than duplicated.** Paychex stays the source for people and pay. First,
+   links ("My pay": pay stubs, W-2s, time off, benefits). Then, with Paychex API access, a nightly
+   staff-list sync (new hires can sign in; people who leave lose access) and "Send to payroll" for
+   approved reimbursements, if they're paid on the paycheck (open question 22).
+
+### Not planned (decided 2026-09-30)
+
+- **New-hire onboarding** stays in Paychex, which SCCSC already uses for it. The app picks up after
+  hire (for example, required trainings).
+- **Timekeeping** (hours and timecard approval) is set aside. Paychex can take approved hours from
+  another app, but California overtime, break and record rules make it a large project of its own.
+  Revisit only after the questions in open question 23 are answered.
+- Copying what Paychex already does (pay stubs, W-2s, benefits enrollment), storing sensitive HR
+  records (medical details, Social Security numbers), and location tracking.
+
+### Other ideas
+
 - A config-driven form builder for admins, only once several request types exist and the
   patterns are clear.
 - App store versions, only if the PWA is not enough.
@@ -179,7 +214,8 @@ This is a starting point for discussion, not a final schema.
 5. How coordinator assignments work (by employee, by department, delegation when someone is out).
 6. ~~Does SCCSC use Google Workspace for staff accounts?~~ **Decided:** email + code (or phone
    number + text code), with roster matching and admin approval (see section 4).
-7. Does the app need languages besides English?
+7. Does the app need languages besides English? (Planned to propose later, 2026-09-30: which
+   languages, and for Chinese, which script?)
 8. How long must records be kept?
 9. Does IT or leadership need to approve hosting staff data on Supabase and Vercel?
 10. ~~Is one claim per pay period right, or should each trip be submitted on its own?~~
@@ -205,6 +241,14 @@ This is a starting point for discussion, not a final schema.
 21. New (phone bills): is the confirmation wording right? ("I confirm I used my own phone for SCCSC
     work during these months.") And which program should phone bills be charged to? (The
     employee picks; it starts on their usual program.)
+22. New (Paychex, for later): are reimbursements paid on the paycheck or by a separate check? Which
+    Paychex plan does SCCSC have, does it include API access (and at what cost), and who is the
+    Paychex Flex Super Admin? Does Paychex hold staff work emails and mobile numbers?
+23. New (timekeeping, set aside): do staff use Paychex Flex Time today, are most staff hourly
+    (non-exempt), and who approves timecards now?
+24. New (trainings tracker, for later): which trainings and documents are required for which roles,
+    who are the Recruitment staff, and what should they be able to see (certificates can be
+    personal)?
 
 ## 9. Rollout plan
 

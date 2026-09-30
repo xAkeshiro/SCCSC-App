@@ -174,7 +174,11 @@ replace it, with results cached.
 | M7 | Supabase + real sign-in emails (texts if approved) | later |
 | M8 | Maps provider and notifications | later |
 | M9 | Installable app (PWA), offline trip drafts | later |
-| M10 | More request types | later |
+| M10 | More request types (purchases with receipts, parking and tolls, pre-approvals, sign-outs, IT requests) | later |
+| M11 | Staff home base: announcements with read confirmations, documents and forms, quick links, calendar | later |
+| M12 | Required trainings and documents (Recruitment role), with email reminders through Resend | later |
+| M13 | Paychex: "My pay" links, then staff-list sync and "Send to payroll" (needs API access) | later |
+| M14 | Other languages | later |
 
 ## Moving to Supabase (M7, outline)
 
