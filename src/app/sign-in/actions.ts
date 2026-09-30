@@ -42,11 +42,11 @@ export async function requestCode(_prev: RequestCodeState, formData: FormData): 
   if (errors.name || errors.phone) return { errors, values: { name, phone: phoneInput } };
 
   const provider = getCodeProvider();
-  const result = await withSystem((tx) => provider.send(tx, phone!));
+  const result = await withSystem((tx) => provider.send(tx, phone!, { fullName: name }));
   if (!result.ok) return { message: result.message, values: { name, phone: phoneInput } };
 
   await setPendingSignIn({ name, phone: phone! });
-  // Demo only: the page shows the code, since no text message is sent.
+  // Demo only: the page shows the code, since nothing is sent.
   if (result.demoCode) await setDemoCode(result.demoCode);
   redirect("/sign-in");
 }
@@ -56,7 +56,7 @@ export async function verifyCode(_prev: VerifyCodeState, formData: FormData): Pr
   const pending = await getPendingSignIn();
   if (!pending) redirect("/sign-in");
   const code = str(formData.get("code"), 12).replace(/\D/g, "");
-  if (code.length !== 6) return { error: "Enter the 6-digit code from the text message." };
+  if (code.length !== 6) return { error: "Enter the 6-digit code we sent you." };
 
   const provider = getCodeProvider();
   const outcome = await withSystem(async (tx) => {
@@ -78,7 +78,7 @@ export async function resendCode(): Promise<VerifyCodeState> {
   const pending = await getPendingSignIn();
   if (!pending) redirect("/sign-in");
   const provider = getCodeProvider();
-  const result = await withSystem((tx) => provider.send(tx, pending.phone));
+  const result = await withSystem((tx) => provider.send(tx, pending.phone, { fullName: pending.name }));
   if (!result.ok) return { error: result.message };
   await setPendingSignIn(pending);
   if (result.demoCode) await setDemoCode(result.demoCode);

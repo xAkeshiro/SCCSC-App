@@ -53,11 +53,43 @@ On the sign-in page, pick a made-up person from the **Demo** dropdown and press 
 
 All names, phone numbers (555-01xx), addresses and amounts are made up.
 
-## Real sign-in texts for the demo
+## Real sign-in codes for the demo
 
-By default the demo shows the sign-in code on screen. To have codes texted to one phone (yours)
-instead, whatever number is typed, use Twilio Verify. A free trial account is enough, because a
-trial can text the phone numbers you verify with Twilio.
+By default the demo shows the sign-in code on screen. To see the real "we sent you a code" step
+instead, the demo can send every code to you, whatever number is typed. You still sign in as the
+person whose number you typed. Pick one:
+
+- **By email through Resend (free).** The email is styled like sccsc.org.
+- **By text through Twilio Verify.** A trial works, then about $0.05 a text.
+
+If both are set up, email is used.
+
+### By email (Resend, free)
+
+1. Sign up at [resend.com](https://resend.com/signup) **with the email address that should get the
+   codes**. Until a domain is verified, Resend only delivers to the address the account signed up
+   with.
+2. Open **API Keys → Create API Key**. Name it **sccsc-app demo**, choose **Sending access**, and
+   copy the key (it starts with `re_` and is only shown once).
+3. In Vercel, open **sccsc-app → Settings → Environment Variables** and add:
+
+   | Name | Value |
+   |---|---|
+   | `RESEND_API_KEY` | `re_…` (mark it Sensitive) |
+   | `DEMO_EMAIL_TO` | the email you signed up with |
+
+4. Redeploy (Deployments → ⋯ → Redeploy). For local dev, put the same lines in `.env.local`.
+
+Then sign in with any name and number, for example Felix Hartwell, (916) 555-0108. The code comes
+from "SCCSC Staff" at `onboarding@resend.dev`; if the first one lands in spam, mark it "not spam".
+Limits: 5 codes per number per hour and 20 in total per hour, well inside Resend's free 100 emails
+a day. Once SCCSC verifies a domain in Resend (a subdomain of sccsc.org, for example), set
+`EMAIL_FROM` to send from it, like `SCCSC Staff <no-reply@staff.sccsc.org>`.
+
+### By text (Twilio Verify)
+
+A free trial account is enough to start, because a trial can text the phone numbers you verify
+with Twilio.
 
 1. Sign up at [twilio.com](https://www.twilio.com/try-twilio) and verify your own mobile number.
 2. In the Twilio Console, open **Verify → Services → Create new**. Name it **SCCSC Staff** (the text

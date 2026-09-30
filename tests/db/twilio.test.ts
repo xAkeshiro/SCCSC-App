@@ -41,7 +41,7 @@ describe("real texts through Twilio Verify", () => {
   it("is used when Twilio is set up, and sends every demo code to DEMO_SMS_TO", async () => {
     useTwilio();
     const provider = getCodeProvider();
-    expect(provider.showsCodeOnScreen).toBe(false);
+    expect(provider.channel).toBe("sms");
     expect(provider.destinationFor("+19165550108")).toBe("+19165550142");
 
     const calls = fakeTwilio({ status: 201, body: { status: "pending" } });
@@ -101,6 +101,6 @@ describe("real texts through Twilio Verify", () => {
   });
 
   it("falls back to showing the code on screen when Twilio isn't set up", () => {
-    expect(getCodeProvider().showsCodeOnScreen).toBe(true);
+    expect(getCodeProvider().channel).toBe("screen");
   });
 });

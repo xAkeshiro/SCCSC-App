@@ -87,7 +87,7 @@ describe("demo distance estimate", () => {
 describe("sign-in code provider", () => {
   it("refuses to show codes on screen when a real database is configured", async () => {
     const { getCodeProvider } = await import("@/lib/auth/code-provider");
-    expect(getCodeProvider().showsCodeOnScreen).toBe(true);
+    expect(getCodeProvider().channel).toBe("screen");
     process.env.DATABASE_URL = "postgres://example/real";
     try {
       expect(() => getCodeProvider()).toThrow(/can't be used with a real database/);

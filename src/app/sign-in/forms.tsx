@@ -2,9 +2,13 @@
 
 import { useActionState } from "react";
 import { Button, Field, Notice, describedBy } from "@/components/ui";
+import type { Channel } from "@/lib/auth/codes";
 import { requestCode, resendCode, verifyCode, type RequestCodeState, type VerifyCodeState } from "./actions";
 
-export function RequestCodeForm() {
+const sendLabel = (channel: Channel, again = false) =>
+  `${channel === "email" ? "Email" : "Text"} me a ${again ? "new " : ""}code`;
+
+export function RequestCodeForm({ channel }: { channel: Channel }) {
   const [state, action, pending] = useActionState<RequestCodeState, FormData>(requestCode, {});
   const e = state.errors ?? {};
   return (
@@ -37,13 +41,13 @@ export function RequestCodeForm() {
         />
       </Field>
       <Button type="submit" size="lg" className="mt-1 w-full roomy:mt-2" disabled={pending}>
-        {pending ? "Sending…" : "Text me a code"}
+        {pending ? "Sending…" : sendLabel(channel)}
       </Button>
     </form>
   );
 }
 
-export function VerifyCodeForm() {
+export function VerifyCodeForm({ channel }: { channel: Channel }) {
   const [state, action, pending] = useActionState<VerifyCodeState, FormData>(verifyCode, {});
   const [resent, resend, resending] = useActionState<VerifyCodeState, FormData>(resendCode, {});
   const error = state.error ?? resent.error;
@@ -71,7 +75,7 @@ export function VerifyCodeForm() {
       </form>
       <form action={resend}>
         <Button type="submit" variant="ghost" size="sm" className="w-full" disabled={resending}>
-          {resending ? "Sending…" : "Text me a new code"}
+          {resending ? "Sending…" : sendLabel(channel, true)}
         </Button>
       </form>
     </div>

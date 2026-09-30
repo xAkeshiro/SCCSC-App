@@ -10,7 +10,7 @@
  */
 import type { Tx } from "@/db";
 import { normalizeUsPhone } from "@/lib/phone";
-import { MAX_SENDS_PER_HOUR, MAX_TEXTS_PER_HOUR_TOTAL, allowSend, upsertAuthUser, type CodeProvider } from "./codes";
+import { MAX_DELIVERIES_PER_HOUR_TOTAL, MAX_SENDS_PER_HOUR, allowSend, upsertAuthUser, type CodeProvider } from "./codes";
 
 export type TwilioConfig = { accountSid: string; authToken: string; serviceSid: string; demoTo: string | null };
 
@@ -82,14 +82,14 @@ function checkError(code: number | null): string {
 export function twilioVerifyProvider(cfg: TwilioConfig): CodeProvider {
   const destinationFor = (phone: string) => cfg.demoTo ?? phone;
   return {
-    showsCodeOnScreen: false,
+    channel: "sms",
     destinationFor,
 
     async send(tx: Tx, phone: string) {
       if (!(await allowSend(tx, phone, MAX_SENDS_PER_HOUR))) {
         return { ok: false, message: "Too many codes were sent to this number. Please wait an hour and try again." };
       }
-      if (!(await allowSend(tx, "*", MAX_TEXTS_PER_HOUR_TOTAL))) {
+      if (!(await allowSend(tx, "*", MAX_DELIVERIES_PER_HOUR_TOTAL))) {
         return { ok: false, message: "The demo has sent a lot of texts this hour. Please try again later, or use the demo list." };
       }
       const res = await verifyApi(cfg, "Verifications", { To: destinationFor(phone), Channel: "sms" });

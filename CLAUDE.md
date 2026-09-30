@@ -36,8 +36,9 @@ Architecture, data model, security model and milestones: @docs/ARCHITECTURE.md
 - Drizzle ORM. PGlite (built-in Postgres) for the demo and local dev; Supabase Postgres later.
   Same migrations and RLS policies on both.
 - Sign-in: phone number + text code. Roster match gets in right away; anyone else waits for an
-  admin to approve (checked against Paychex). Demo mode shows the code on screen, or texts it
-  through Twilio Verify to one phone (`DEMO_SMS_TO`) when the `TWILIO_*` variables are set.
+  admin to approve (checked against Paychex). Demo mode shows the code on screen, or sends every
+  code to Eden: by email through Resend (`RESEND_API_KEY` + `DEMO_EMAIL_TO`), or by text through
+  Twilio Verify (`TWILIO_*` + `DEMO_SMS_TO`).
 - Deployed on Vercel: project `sccsc-app` (demo mode, fake data), from this repo's default branch.
 - Later: installable **PWA** (same features as the site), SMS/email notifications, a
   maps/distance API (provider to be chosen, consider cost).

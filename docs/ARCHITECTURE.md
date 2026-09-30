@@ -28,8 +28,8 @@ Postgres
 
 | Mode | When | Database | Sign-in codes |
 |---|---|---|---|
-| Local dev | `npm run dev`, no `DATABASE_URL` | PGlite saved in `.data/pglite` | shown on screen, or texted (below) |
-| Demo | on Vercel without `DATABASE_URL`, or `DEMO_MODE=true` | PGlite in memory, reseeded on start | shown on screen, or texted (below) |
+| Local dev | `npm run dev`, no `DATABASE_URL` | PGlite saved in `.data/pglite` | on screen, or emailed or texted (below) |
+| Demo | on Vercel without `DATABASE_URL`, or `DEMO_MODE=true` | PGlite in memory, reseeded on start | on screen, or emailed or texted (below) |
 | Production (later) | `DATABASE_URL` set | Supabase Postgres | text message (Supabase Auth) |
 
 Local dev and the demo seed fake data on first start and show a "Demo, fake data only" banner.
@@ -110,13 +110,17 @@ The rules are tested in `tests/db/security.test.ts`.
 
 1. The person enters their full name and mobile number.
 2. A 6-digit code is sent (`src/lib/auth/code-provider.ts` picks how):
+   - **Email through Resend** when `RESEND_API_KEY` and `DEMO_EMAIL_TO` are set
+     (`src/lib/auth/email.ts`). Demo only: staff sign in by phone, so every code goes to one inbox
+     (Eden's), whatever number was typed, and it is refused when `DATABASE_URL` is set. The app
+     makes and checks the code; the email (`sign-in-email.ts`) follows the sccsc.org look.
    - **Twilio Verify** when `TWILIO_*` is set (`src/lib/auth/twilio.ts`). Twilio makes, texts and
      checks the code. For the demo, `DEMO_SMS_TO` sends every code to one phone (Eden's),
      whatever number was typed; the typed number still decides who signs in. That override is
      refused when `DATABASE_URL` is set.
    - **On screen** otherwise (demo data only; refused when `DATABASE_URL` is set).
    Codes expire after 10 minutes and allow 5 tries. Each number can request 5 per hour, and the
-   texting demo sends at most 20 texts an hour in total. Later, Supabase phone sign-in (which can
+   email and texting demos send at most 20 codes an hour in total. Later, Supabase phone sign-in (which can
    use Twilio Verify) takes over.
 3. With the right code, their phone is verified:
    - **On the roster, name matches** → linked to their staff record and signed in.

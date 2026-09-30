@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { ArrowLeft, ArrowRight, MessageSquareText, Sparkles } from "lucide-react";
+import { ArrowLeft, ArrowRight, Mail, MessageSquareText, Sparkles } from "lucide-react";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { Wordmark } from "@/components/brand";
@@ -9,6 +9,8 @@ import { staff, staffRoles } from "@/db/schema";
 import { DEMO } from "@/db/seed";
 import { withSystem } from "@/db/with-user";
 import { getCodeProvider } from "@/lib/auth/code-provider";
+import type { Channel } from "@/lib/auth/codes";
+import { maskEmail } from "@/lib/auth/email";
 import { getSessionUserId, getPendingSignIn } from "@/lib/auth/session";
 import { getViewer, type Role } from "@/lib/auth/viewer";
 import { maskPhone } from "@/lib/phone";
@@ -45,13 +47,18 @@ export default async function SignInPage() {
 
   const pending = await getPendingSignIn();
   const demoCode = pending ? (await cookies()).get("sccsc_demo_code")?.value : undefined;
-  // In the texting demo (DEMO_SMS_TO), every code goes to one phone rather than the one typed.
+  // In the email demo (DEMO_EMAIL_TO) and texting demo (DEMO_SMS_TO), every code goes to one inbox
+  // or phone rather than the number typed.
+  let channel: Channel = "sms";
   let sentTo = pending?.phone ?? null;
   try {
-    if (pending) sentTo = getCodeProvider().destinationFor(pending.phone);
+    const provider = getCodeProvider();
+    channel = provider.channel;
+    if (pending) sentTo = provider.destinationFor(pending.phone);
   } catch {
-    // Misconfigured texting: the send step already showed the error.
+    // Misconfigured codes: sending shows the error.
   }
+  const byEmail = channel === "email";
   const sentElsewhere = Boolean(pending && sentTo !== pending.phone);
   const people = await demoPeople();
 
@@ -99,18 +106,26 @@ export default async function SignInPage() {
           <div className="card p-6 shadow-[var(--shadow-card)] sm:px-9 sm:py-7 roomy:sm:px-10 roomy:sm:py-10">
             {pending ? (
               <>
-                <Eyebrow>Check your phone</Eyebrow>
+                <Eyebrow>{byEmail ? "Check your email" : "Check your phone"}</Eyebrow>
                 <h2 className="mt-2 text-3xl leading-tight sm:mt-3 sm:text-4xl roomy:mt-4">Enter your code</h2>
                 <p className="mt-2 text-ink-500 sm:mt-3 roomy:mt-4">
-                  We texted a code to <strong className="text-ink">{maskPhone(sentTo ?? pending.phone)}</strong>. It works for 10
-                  minutes.
+                  {byEmail ? "We emailed a code to " : "We texted a code to "}
+                  <strong className="text-ink">
+                    {byEmail && sentTo ? maskEmail(sentTo) : maskPhone(sentTo ?? pending.phone)}
+                  </strong>
+                  . It works for 10 minutes.
                 </p>
                 {sentElsewhere ? (
                   <div className="mt-5 flex gap-3 rounded-[var(--radius-card)] bg-ink-50 p-4" role="status">
-                    <MessageSquareText aria-hidden className="mt-0.5 size-5 shrink-0 text-brand-600" />
+                    {byEmail ? (
+                      <Mail aria-hidden className="mt-0.5 size-5 shrink-0 text-brand-600" />
+                    ) : (
+                      <MessageSquareText aria-hidden className="mt-0.5 size-5 shrink-0 text-brand-600" />
+                    )}
                     <p className="text-sm">
-                      <span className="font-semibold">Demo:</span> every code goes to the demo phone, not the number you typed.
-                      You&apos;ll sign in as the person whose number you entered.
+                      <span className="font-semibold">Demo:</span> every code goes to the demo{" "}
+                      {byEmail ? "inbox" : "phone"}, not the number you typed. You&apos;ll sign in as the person whose number
+                      you entered.
                     </p>
                   </div>
                 ) : null}
@@ -128,7 +143,7 @@ export default async function SignInPage() {
                   </div>
                 ) : null}
                 <div className="mt-6">
-                  <VerifyCodeForm />
+                  <VerifyCodeForm channel={channel} />
                 </div>
                 <form action={startOver} className="mt-4 border-t border-ink-100 pt-4">
                   <Button type="submit" variant="ghost" size="sm" className="w-full text-ink-700">
@@ -142,9 +157,11 @@ export default async function SignInPage() {
                 <h2 className="mt-2 text-3xl leading-tight sm:mt-3 sm:text-4xl roomy:mt-4">
                   <BrushText>Sign in</BrushText>
                 </h2>
-                <p className="mt-2 text-ink-500 sm:mt-3 roomy:mt-4">No password. We&apos;ll text you a code.</p>
+                <p className="mt-2 text-ink-500 sm:mt-3 roomy:mt-4">
+                  No password. We&apos;ll {byEmail ? "email" : "text"} you a code.
+                </p>
                 <div className="mt-5 sm:mt-6 roomy:mt-8">
-                  <RequestCodeForm />
+                  <RequestCodeForm channel={channel} />
                 </div>
                 <p className="mt-5 border-t border-ink-100 pt-4 text-sm text-ink-500 roomy:mt-7 roomy:pt-5">
                   <span className="font-semibold text-ink-700">New here?</span> Sign in the same way. An admin will approve
