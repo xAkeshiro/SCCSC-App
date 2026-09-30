@@ -103,11 +103,21 @@ mask:nth-of-type(4) .brush {
   animation: show 0.01s linear 1.4s both;
 }
 
+.the,
+.center {
+  font-family: var(--font-garamond), Georgia, serif;
+  font-weight: 400;
+}
+
 .the {
+  font-size: 116px;
+  fill: #333;
   animation: slide 0.5s cubic-bezier(0.2, 0.7, 0.2, 1) calc(1.75s + var(--i) * 0.07s) both;
 }
 
 .center {
+  font-size: 251.3px;
+  fill: #d0112b;
   animation: rise 0.6s cubic-bezier(0.2, 0.8, 0.25, 1.15) calc(1.85s + var(--i) * 0.06s) both;
 }
 

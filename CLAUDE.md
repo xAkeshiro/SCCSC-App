@@ -92,8 +92,9 @@ The look follows the live sccsc.org landing page (see `src/app/globals.css` for 
 
 - Red `#D0112B` (hover `#A50E22`), text `#1D1D1D`, charcoal `#333333`, muted `#6B6B6B`, white,
   light gray sections `#F7F7F7`. Light red tint `#F3C4CB` for accents and the brush underline.
-- Fonts: Onest for headings, Instrument Sans for text (both from sccsc.org). EB Garamond only for
-  the lowercase "reimbursement tracker" wordmark (stand-in for the logo serif).
+- Fonts: Onest for headings, Instrument Sans for text (both from sccsc.org). EB Garamond (the logo
+  serif) only for the lowercase "reimbursement tracker" wordmark and "thecenter" in the opening
+  animation.
 - Details from sccsc.org: red-heart eyebrows above headings, a pink brush stroke under one word
   of a heading, big red stat numbers, white cards with soft shadows, 8px button corners, dark
   top bar and footer.

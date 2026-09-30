@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useSyncExternalStore, type CSSProperties } from "react";
 import styles from "./intro.module.css";
-import { CENTER, THE, XIN_STROKES } from "./logo-paths";
+import { XIN_STROKES } from "./logo-paths";
 import { SEEN_KEY } from "./script";
 
 /**
@@ -52,16 +52,17 @@ export function Intro() {
             </mask>
           ))}
         </defs>
-        <g fill="#333" fillRule="evenodd">
-          {THE.map((d, i) => (
-            <path key={i} d={d} className={styles.the} style={order(i)} />
-          ))}
-        </g>
-        <g fill="#D0112B" fillRule="evenodd">
-          {CENTER.map((d, i) => (
-            <path key={i} d={d} className={styles.center} style={order(i)} />
-          ))}
-        </g>
+        {/* "thecenter" in EB Garamond, one letter at a time so they can move on their own. */}
+        {THE.map(([letter, x], i) => (
+          <text key={i} x={x} y="126" className={styles.the} style={order(i)}>
+            {letter}
+          </text>
+        ))}
+        {CENTER.map(([letter, x], i) => (
+          <text key={i} x={x} y="126" className={styles.center} style={order(i)}>
+            {letter}
+          </text>
+        ))}
         {/* The organization's name as text (the app's Instrument Sans), in the logo's two lines. */}
         {NAME_LINES.map((line, i) => (
           <text key={line} x="223" y={190 + i * 52} className={styles.name} style={order(i)}>
@@ -88,6 +89,25 @@ export function Intro() {
     </div>
   );
 }
+
+/*
+ * Where each letter of "the" (116 units) and "center" (251.3 units, a little tighter than the
+ * font's own spacing) starts on the 126 baseline, with EB Garamond's kerning. They put the words
+ * where the original logo has them: "the" from 225, "center" from 376 to the right edge at 947.
+ */
+const THE: [string, number][] = [
+  ["t", 221.4],
+  ["h", 257.8],
+  ["e", 317.6],
+];
+const CENTER: [string, number][] = [
+  ["c", 368.2],
+  ["e", 463],
+  ["n", 558.5],
+  ["t", 688.6],
+  ["e", 765],
+  ["r", 860.5],
+];
 
 const NAME_LINES = ["sacramento chinese", "community service center"];
 

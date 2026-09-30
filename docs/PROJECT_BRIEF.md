@@ -261,7 +261,7 @@ This is a starting point for discussion, not a final schema.
 - Colors: SCCSC red `#D0112B`, charcoal `#333333`, white, light red tint `#F3C4CB`. From the
   live sccsc.org theme: text `#1D1D1D`, hover red `#A50E22`, muted `#6B6B6B`, section gray.
 - Type (updated 2026-09-29 to match sccsc.org): Onest for headings, Instrument Sans for UI text.
-  EB Garamond only for the wordmark (a stand-in for the logo serif).
+  EB Garamond for the wordmark and for "thecenter" in the opening animation (the logo's serif).
 - Logo: the 心 mark in a red square, traced to vector from the SCCSC logo, in `assets/brand/`:
   - `thecenter-logo.svg`: the full "thecenter / sacramento chinese community service center" logo,
     traced to vector from the original artwork (2026-09-30). Used on printed claims and batches and
@@ -279,6 +279,7 @@ This is a starting point for discussion, not a final schema.
   left as "thecenter" and the name come out beside it, and it fades into the app, in about 3.5
   seconds.
   It plays once when the app is opened in a browser tab, a tap skips it, and it never plays for
-  people whose device is set to reduce motion (`src/components/intro/`). The "sacramento chinese /
-  community service center" lines are set in Instrument Sans (the app's text font) so they're easy
-  to read, in the logo's two-line layout; the logo file itself keeps the original lettering.
+  people whose device is set to reduce motion (`src/components/intro/`). "thecenter" is set in EB
+  Garamond (the logo's typeface) and the "sacramento chinese / community service center" lines in
+  Instrument Sans (the app's text font) so they're easy to read, both placed as in the original
+  logo; the logo file itself keeps the original lettering.
