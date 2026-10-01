@@ -42,6 +42,20 @@ One internal app, usable as a website or an installed phone app with the same fe
 
 A person can hold more than one role (for example, a coordinator is also an employee).
 
+### Who's who at SCCSC (from Eden, 2026-10-01)
+
+The President, the CFO and the Fiscal Operations Manager approved the project and gave the green
+light to build. SCCSC's structure for this project, from the top (most of the executive team is
+left out):
+
+| Group | People | In the app |
+|---|---|---|
+| Finance team | Andrew (CFO), Stef (Fiscal Operations Manager), and for now Eden Redona (Administrative Assistant, who assists them and works on company solutions) | Finance. Eden is also the admin for now. |
+| Coordinators | Sr. Program Manager, Program Managers. Assistant Program Managers aren't included for now. | Coordinator: reviews their team's claims |
+| Team leads | Sr. Team Lead, Team Lead | Still open whether they review claims (open question 5) |
+
+Everyone, at every level, logs their own trips and phone bills as an employee.
+
 ## 4. Phase 1: Mileage Tracker (MVP)
 
 ### Employee
@@ -212,6 +226,9 @@ This is a starting point for discussion, not a final schema.
 3. How should trips that start from home be handled (commute miles are generally not reimbursable)?
 4. Exact reimbursement cadence and any cutoff for a given pay period.
 5. How coordinator assignments work (by employee, by department, delegation when someone is out).
+   Coordinators are the Sr. Program Manager and Program Managers (2026-10-01). Still open: do the
+   Sr. Team Lead and Team Leads review their team's claims, or does every claim go to a Program
+   Manager? And who covers when a reviewer is out?
 6. ~~Does SCCSC use Google Workspace for staff accounts?~~ **Decided:** email + code (or phone
    number + text code), with roster matching and admin approval (see section 4).
 7. Does the app need languages besides English? (Planned to propose later, 2026-09-30: which
@@ -252,9 +269,14 @@ This is a starting point for discussion, not a final schema.
 
 ## 9. Rollout plan
 
-1. Build and test with finance using fake data.
-2. Pilot with one program for a pay cycle or two, keeping paper as a backup.
-3. Short walkthrough for coordinators, then everyone switches and the paper forms retire.
+The prototype is built and approved by the President, the CFO and the Fiscal Operations Manager
+(recorded 2026-10-01).
+
+1. Finish the admin tools (M6), so the app is fully working and set up the way SCCSC runs.
+2. Walk the coordinators and program managers through it with fake data, and work in their feedback.
+3. Go-live setup (M7): Supabase, sign-in emails from an SCCSC address, the real staff list.
+4. Pilot with one program for a pay cycle or two, keeping paper as a backup.
+5. Everyone switches, with a short how-to for staff, and the paper forms retire.
 
 ## 10. Brand
 

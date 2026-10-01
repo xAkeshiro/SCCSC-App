@@ -170,7 +170,7 @@ replace it, with results cached.
 | M4 | Coordinator review: approve, return, deny, bulk approve | done |
 | M5 | Finance: batches, CSV export, mark paid, printable batch, simple report | done |
 | M5b | Phone bill reimbursement (the second request type), renamed "reimbursement tracker" | done |
-| M6 | Admin: roster import, roles and coordinators, rates, programs, settings, audit view | later |
+| M6 | Admin: roster import, roles and coordinators, rates, programs, settings, audit view. Then a walkthrough with the coordinators and program managers | next |
 | M7 | Supabase + real sign-in emails (texts if approved) | later |
 | M8 | Maps provider and notifications | later |
 | M9 | Installable app (PWA), offline trip drafts | later |

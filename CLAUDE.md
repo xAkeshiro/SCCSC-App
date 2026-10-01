@@ -13,8 +13,11 @@ Architecture, data model, security model and milestones: @docs/ARCHITECTURE.md
 
 - Working prototype of the reimbursement tracker: mileage, and phone bills ($45 a month, claimed
   every two months, with a photo or PDF of the bill). Website; the installable app/PWA comes later.
-- Runs on a built-in database (PGlite) with **fake data only** until the director and finance
-  sign off. Supabase, real sign-in emails and a maps provider come after that.
+- Approved by the President, the CFO and the Fiscal Operations Manager, with the green light to
+  build (recorded 2026-10-01). Next: the admin tools (M6), then a walkthrough with the
+  coordinators and program managers.
+- Runs on a built-in database (PGlite) with **fake data only** until go-live setup (M7: Supabase
+  and real sign-in emails). A maps provider comes after that.
 - Several business rules are still unconfirmed (see "Open questions" in the brief). Do not guess
   at these. Build them as configurable settings (the `settings` table) or ask Eden.
 
@@ -63,7 +66,9 @@ Architecture, data model, security model and milestones: @docs/ARCHITECTURE.md
   "request type" (mileage and phone bills so far, other reimbursements later). Each type's
   specifics live in its request type (`src/lib/requests/`), not hard-coded across the app. Do NOT build a drag-and-drop form builder in
   phase 1; define request types in code or config.
-- **Roles:** employee, coordinator (approver), finance, admin. One person can hold several.
+- **Roles:** employee, coordinator (approver), finance, admin. One person can hold several. At
+  SCCSC, finance is the CFO, the Fiscal Operations Manager and (for now) Eden; coordinators are the
+  Sr. Program Manager and Program Managers (see "Who's who" in the brief).
 - **Status flow:** draft → submitted → approved / returned / denied → batched → paid.
 - **Audit everything.** Every status change stores who, when, and any comment. Approved
   records are locked; changes require returning the request.
