@@ -70,14 +70,20 @@ test("fix a returned claim and resubmit it", async ({ page }) => {
   await expect(page.getByRole("heading", { level: 1 })).toContainText("Waiting for approval");
 });
 
-test("the printable claim shows the trips and the approval", async ({ page }) => {
+test("the printable claim is laid out like the paper mileage voucher, with both signatures", async ({ page }) => {
   await signInAs(page, "Rowan Ellery");
   await page.goto("/claims");
   await page.getByRole("link", { name: /Paid/ }).first().click();
   await page.waitForURL(/\/claims\/[0-9a-f-]{36}/);
   const url = page.url().replace("/claims/", "/print/claims/");
   await page.goto(url);
-  await expect(page.getByRole("heading", { name: "Mileage reimbursement claim" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Mileage Claim Voucher" })).toBeVisible();
+  for (const column of ["Date", "School or site", "Purpose", "Origin", "Destination", "Indirect miles", "Direct miles", "Parking fee"]) {
+    await expect(page.getByRole("columnheader", { name: column, exact: true })).toBeVisible();
+  }
+  await expect(page.getByText(/Cost per mile × \$0\.7/)).toBeVisible();
+  await expect(page.getByText("I certify I have a valid driver's license and vehicle coverage.")).toBeVisible();
+  await expect(page.getByText(/Confirmed and submitted electronically by Rowan Ellery/)).toBeVisible();
   await expect(page.getByText(/Approved electronically by Lena Fairbanks/)).toBeVisible();
-  await expect(page.getByRole("row").filter({ hasText: "Program launch at Cedar Grove" })).toBeVisible();
+  await expect(page.getByRole("row").filter({ hasText: "Program launch at Cedar Grove" })).toContainText("FOOTHILL HIGH SCHOOL (211)");
 });

@@ -116,8 +116,15 @@ export function ClaimBuilder({
             className="mt-0.5 size-5 shrink-0"
           />
           <span>
-            I confirm these trips were for SCCSC business, in my own vehicle, and that the dates, places and miles are
-            correct. My normal commute is not included.
+            <span className="block">
+              I confirm these trips were for SCCSC business, in my own vehicle, and that the dates, places and miles are correct. My
+              normal commute is not included.
+            </span>
+            {/* The two lines from the paper Mileage Claim Voucher. */}
+            <span className="mt-2 block">
+              I also certify that I have a valid driver&apos;s license and vehicle coverage, and that I obey all traffic laws and
+              regulations.
+            </span>
           </span>
         </label>
       </div>

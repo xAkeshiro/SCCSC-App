@@ -3,11 +3,11 @@ import { notFound } from "next/navigation";
 import { PrintSheet } from "@/components/print-sheet";
 import { requireViewer } from "@/lib/auth/viewer";
 import { claimsForPrint } from "@/lib/data/claims";
-import { formatDateTime, formatDay } from "@/lib/format";
+import { formatDateTime } from "@/lib/format";
 import { formatBytes } from "@/lib/files";
-import { formatCents, formatRate } from "@/lib/money";
-import { formatMonth } from "@/lib/requests/phone";
-import { routeText } from "@/lib/requests/pickable";
+import { formatCents } from "@/lib/money";
+import { formatMonth, formatMonths } from "@/lib/requests/phone";
+import { MileageVoucher, tripMonths } from "./mileage-voucher";
 import { ACTION_LABEL, STATUS_LABEL, claimNumber } from "@/lib/requests/status";
 import { siteLabel } from "@/lib/sites";
 
@@ -18,26 +18,33 @@ export default async function PrintClaimPage({ params }: PageProps<"/print/claim
   const { id } = await params;
   const [claim] = await claimsForPrint(viewer, [id]);
   if (!claim) notFound();
-  const miles = claim.trips.reduce((n, t) => n + Number(t.miles), 0);
   const submitted = claim.events.find((e) => e.action === "submitted" || e.action === "resubmitted");
   const isPhone = claim.type === "phone";
-  const certified = isPhone
-    ? "confirmed they used their own phone for SCCSC work during these months"
-    : "confirmed these trips were for SCCSC business and the details are correct";
+  const statements = isPhone
+    ? ["I confirm I used my own phone for SCCSC work during these months."]
+    : [
+        "These trips were for SCCSC business, in my own vehicle, and the dates, places and miles are correct. My normal commute is not included.",
+        "I certify I have a valid driver's license and vehicle coverage.",
+        "I certify I obey all traffic laws and regulations.",
+      ];
 
   return (
     <PrintSheet
-      title={isPhone ? "Phone bill reimbursement claim" : "Mileage reimbursement claim"}
+      title={isPhone ? "Phone bill reimbursement claim" : "Mileage Claim Voucher"}
       subtitle={
         <>
           Claim {claimNumber(claim.ref, claim.type)} · {STATUS_LABEL[claim.status]}
         </>
       }
     >
-      <dl className="grid grid-cols-3 gap-4">
+      <dl className="grid grid-cols-4 gap-4">
         <div>
           <dt className="text-ink-500">Employee</dt>
           <dd className="font-semibold">{claim.ownerName}</dd>
+        </div>
+        <div>
+          <dt className="text-ink-500">{isPhone ? "Months" : "Month/Year"}</dt>
+          <dd className="font-semibold">{isPhone ? formatMonths(claim.phoneMonths.map((m) => m.month)) : tripMonths(claim.trips.map((t) => t.date))}</dd>
         </div>
         <div>
           <dt className="text-ink-500">Submitted</dt>
@@ -79,45 +86,7 @@ export default async function PrintClaimPage({ params }: PageProps<"/print/claim
           </tfoot>
         </table>
       ) : (
-      <table className="w-full border-collapse text-left">
-        <thead>
-          <tr className="border-b border-ink text-[12px]">
-            <th className="py-1.5 pr-2 font-semibold">Date</th>
-            <th className="py-1.5 pr-2 font-semibold">Route</th>
-            <th className="py-1.5 pr-2 font-semibold">Business purpose</th>
-            <th className="py-1.5 pr-2 font-semibold">School or site</th>
-            <th className="py-1.5 pr-2 text-right font-semibold">Miles</th>
-            <th className="py-1.5 pr-2 text-right font-semibold">Rate</th>
-            <th className="py-1.5 text-right font-semibold">Amount</th>
-          </tr>
-        </thead>
-        <tbody>
-          {claim.trips.map((t) => (
-            <tr key={t.id} className="border-b border-ink-100 align-top">
-              <td className="py-1.5 pr-2 whitespace-nowrap">{formatDay(t.date, { withYear: true, weekday: false })}</td>
-              <td className="py-1.5 pr-2">
-                {routeText(t)}
-                {t.overrideReason ? <div className="text-[11px] text-ink-500">Miles changed: {t.overrideReason}</div> : null}
-              </td>
-              <td className="py-1.5 pr-2">{t.purpose}</td>
-              <td className="py-1.5 pr-2">{siteLabel(t.siteCode ? { code: t.siteCode, name: t.siteName ?? "" } : null)}</td>
-              <td className="py-1.5 pr-2 text-right">{Number(t.miles).toFixed(1)}</td>
-              <td className="py-1.5 pr-2 text-right whitespace-nowrap">{formatRate(t.rateCents).replace(" per mile", "")}</td>
-              <td className="py-1.5 text-right">{formatCents(t.amountCents)}</td>
-            </tr>
-          ))}
-        </tbody>
-        <tfoot>
-          <tr className="border-t-2 border-ink font-semibold">
-            <td className="py-2" colSpan={4}>
-              Total ({claim.trips.length} trips)
-            </td>
-            <td className="py-2 pr-2 text-right">{miles.toFixed(1)}</td>
-            <td />
-            <td className="py-2 text-right">{formatCents(claim.totalCents)}</td>
-          </tr>
-        </tfoot>
-      </table>
+        <MileageVoucher trips={claim.trips} />
       )}
 
       {claim.attachments.length > 0 ? (
@@ -129,15 +98,18 @@ export default async function PrintClaimPage({ params }: PageProps<"/print/claim
 
       <div className="grid grid-cols-2 gap-6">
         <div className="rounded-[var(--radius-btn)] border border-ink-100 p-3">
-          <p className="font-semibold">Employee certification</p>
+          <p className="font-semibold">Employee&apos;s signature</p>
+          <ul className="mt-1 list-disc space-y-0.5 pl-4">
+            {statements.map((line) => (
+              <li key={line}>{line}</li>
+            ))}
+          </ul>
           <p className="mt-1">
-            {submitted
-              ? `${submitted.actorName} ${certified} on ${formatDateTime(submitted.createdAt)}.`
-              : "Not submitted yet."}
+            {submitted ? `Confirmed and submitted electronically by ${submitted.actorName} on ${formatDateTime(submitted.createdAt)}.` : "Not submitted yet."}
           </p>
         </div>
         <div className="rounded-[var(--radius-btn)] border border-ink-100 p-3">
-          <p className="font-semibold">Approval</p>
+          <p className="font-semibold">Supervisor&apos;s signature</p>
           <p className="mt-1">
             {claim.approval
               ? `Approved electronically by ${claim.approval.actorName} on ${formatDateTime(claim.approval.createdAt)}.`
