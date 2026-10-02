@@ -37,7 +37,9 @@ export default async function NewTripPage({ searchParams }: PageProps<"/trips/ne
           miles: null,
           overrideReason: "",
           purpose: "",
-          programId: viewer.defaultProgramId ?? "",
+          siteId: viewer.defaultSiteId ?? "",
+          costType: options.lastCostType ?? "",
+          parking: "",
           notes: "",
         }}
       />

@@ -146,15 +146,15 @@ export default async function BatchPage({ params, searchParams }: PageProps<"/fi
             </div>
           </section>
 
-          <section aria-labelledby="programs">
-            <h2 id="programs" className="text-2xl">
-              By program
+          <section aria-labelledby="sites">
+            <h2 id="sites" className="text-2xl">
+              By school or site
             </h2>
             <ul className="card mt-4 divide-y divide-ink-100">
-              {batch.byProgram.map((p) => (
+              {batch.bySite.map((p) => (
                 <li key={p.code} className="flex items-center justify-between gap-4 px-5 py-3">
                   <span>
-                    <span className="font-semibold">{p.code}</span> <span className="text-ink-500">{p.name}</span>
+                    <span className="font-semibold">{p.name}</span> <span className="text-ink-500">{p.code}</span>
                     <span className="block text-sm text-ink-500">
                       {[p.trips ? `${plural(p.trips, "trip")}, ${formatMiles(p.miles)}` : null, p.months ? `${plural(p.months, "phone month")}` : null]
                         .filter(Boolean)

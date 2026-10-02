@@ -80,13 +80,13 @@ export default async function PrintBatchPage({ params }: PageProps<"/print/batch
       </table>
 
       <div>
-        <p className="font-semibold">By program or grant</p>
+        <p className="font-semibold">By school or site</p>
         <table className="mt-1 w-full max-w-md border-collapse text-left">
           <tbody>
-            {batch.byProgram.map((p) => (
+            {batch.bySite.map((p) => (
               <tr key={p.code} className="border-b border-ink-100">
                 <td className="py-1 pr-2">
-                  {p.code}: {p.name}
+                  {p.name} ({p.code})
                 </td>
                 <td className="py-1 pr-2 text-right">
                   {[p.trips ? `${p.miles.toFixed(1)} mi` : null, p.months ? `${p.months} phone ${p.months === 1 ? "month" : "months"}` : null]

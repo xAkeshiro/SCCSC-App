@@ -34,6 +34,13 @@ export function mileageAmountCents(miles: string | number, rateCents: string | n
   return Math.floor((tenths * hundredths + 500) / 1000);
 }
 
+/** "$12.50", "12.5" or "12" → 1250 cents. Empty → 0. Null if it isn't an amount. */
+export function dollarsToCents(value: string): number | null {
+  const text = value.replace(/[$,\s]/g, "");
+  if (text === "") return 0;
+  return toScaledInt(text, 2);
+}
+
 const usd = new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" });
 
 export function formatCents(cents: number): string {

@@ -1,7 +1,7 @@
 import { expect, test } from "@playwright/test";
 import { randomSuffix, signInAs } from "./helpers";
 
-test("log, edit and delete a trip @phone", async ({ page }) => {
+test("log, edit and delete a trip, with parking, direct or indirect, and the school @phone", async ({ page }) => {
   const purpose = `Food bank pickup ${randomSuffix()}`;
   await signInAs(page, "Tessa Quill");
   await page.goto("/trips/new");
@@ -11,19 +11,28 @@ test("log, edit and delete a trip @phone", async ({ page }) => {
   await page.getByLabel("Address").fill("200 Pretend Ave, Sacramento");
   await page.getByLabel("Miles").fill("7.4");
   await page.getByLabel("What was the trip for?").fill(purpose);
-  await expect(page.getByText("$5.37")).toBeVisible(); // 7.4 mi x 72.5¢
+  await expect(page.getByText("$5.62")).toBeVisible(); // 7.4 mi x 76¢
+  await page.getByLabel("Parking").fill("4.50");
+  await expect(page.getByText("$10.12")).toBeVisible();
+  // Tessa's last trip was indirect, so that's picked; this one is direct.
+  await expect(page.getByRole("radio", { name: /^Indirect/ })).toBeChecked();
+  await page.getByRole("radio", { name: /^Direct/ }).check();
+  await expect(page.getByLabel("School or site")).toHaveValue(/.+/); // her usual one
   await page.getByRole("button", { name: "Save trip" }).click();
 
   await expect(page).toHaveURL(/\/trips\?saved=added/);
   const card = page.getByRole("listitem").filter({ hasText: purpose });
   await expect(card).toContainText("200 Pretend Ave, Sacramento");
-  await expect(card).toContainText("$5.37");
+  await expect(card).toContainText("$10.12");
+  await expect(card).toContainText("Direct");
+  await expect(card).toContainText("FOOTHILL HIGH SCHOOL");
+  await expect(card).toContainText("Parking $4.50");
 
   await card.getByRole("link", { name: /Edit/ }).click();
   await page.getByLabel("Miles").fill("8");
   await page.getByRole("button", { name: "Save changes" }).click();
   await expect(page).toHaveURL(/\/trips\?saved=updated/);
-  await expect(page.getByRole("listitem").filter({ hasText: purpose })).toContainText("$5.80");
+  await expect(page.getByRole("listitem").filter({ hasText: purpose })).toContainText("$10.58"); // 8 mi x 76¢ + $4.50
 
   await page.getByRole("listitem").filter({ hasText: purpose }).getByRole("link", { name: /Edit/ }).click();
   page.once("dialog", (d) => d.accept());

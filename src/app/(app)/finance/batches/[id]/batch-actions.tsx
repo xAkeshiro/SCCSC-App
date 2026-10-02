@@ -41,7 +41,7 @@ export function ExportButtons({ batchId }: { batchId: string }) {
         </Button>
       </div>
       <p className="text-sm text-ink-500">
-        Trip detail has one row per trip. Summary has one row per employee and program.
+        Trip detail has one row per trip. Summary has one row per employee and school or site.
       </p>
     </div>
   );

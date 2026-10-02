@@ -63,6 +63,8 @@ export const requestAction = pgEnum("request_action", [
   "paid",
 ]);
 export const batchStatus = pgEnum("batch_status", ["open", "exported", "paid"]);
+/** Whether a cost is direct (with students) or indirect (meetings, trainings, admin). Picks the account. */
+export const costType = pgEnum("cost_type", ["direct", "indirect"]);
 
 const createdAt = () => timestamp("created_at", { withTimezone: true }).notNull().defaultNow();
 const updatedAt = () => timestamp("updated_at", { withTimezone: true }).notNull().defaultNow();
@@ -85,7 +87,10 @@ export const staff = pgTable(
     source: staffSource("source").notNull(),
     /** Who approves this person's requests. */
     coordinatorId: uuid("coordinator_id").references((): AnyPgColumn => staff.id, { onDelete: "set null" }),
-    defaultProgramId: uuid("default_program_id").references(() => programs.id, { onDelete: "set null" }),
+    /** Their usual school or site, filled in on new trips and phone bills. */
+    defaultSiteId: uuid("default_site_id").references(() => sites.id, { onDelete: "set null" }),
+    /** Their name as a contact (payee) in Aplos, if it differs from their full name. */
+    aplosName: text("aplos_name"),
     createdAt: createdAt(),
     updatedAt: updatedAt(),
   },
@@ -166,11 +171,47 @@ export const accessRequests = pgTable(
 // Reference data
 // ---------------------------------------------------------------------------------------------
 
-/** Program or grant codes that trips are charged to. */
-export const programs = pgTable("programs", {
+/**
+ * Aplos funds: Center/Central and the school districts (for example 200 - Twin Rivers USD). The
+ * middle part of a budget code like 5430-200-211. Imported from Aplos by an admin.
+ */
+export const funds = pgTable("funds", {
+  code: text("code").primaryKey(),
+  name: text("name").notNull(),
+  /** Exactly as Aplos shows it, e.g. "200 - Twin Rivers USD", for the import file. */
+  aplosName: text("aplos_name").notNull(),
+  active: boolean("active").notNull().default(true),
+  createdAt: createdAt(),
+});
+
+/**
+ * Aplos expense accounts: the first part of a budget code (for example 5430 - Telephone
+ * (Indirect)). Imported from Aplos by an admin. Which account each kind of reimbursement goes to
+ * is a setting (aplos_accounts).
+ */
+export const accounts = pgTable("accounts", {
+  number: text("number").primaryKey(),
+  name: text("name").notNull(),
+  /** The account it sits under in Aplos, e.g. 8550 for 5702. */
+  parentNumber: text("parent_number"),
+  /** Exactly as Aplos shows it, e.g. "5702 - Local Travel - auto (Direct)", for the import file. */
+  aplosName: text("aplos_name").notNull(),
+  active: boolean("active").notNull().default(true),
+  createdAt: createdAt(),
+});
+
+/**
+ * Schools and sites: the Aplos "Schools" tags (for example 211 - FOOTHILL HIGH SCHOOL), each in a
+ * fund. The last part of a budget code. Trips and phone bills are charged to one.
+ */
+export const sites = pgTable("sites", {
   id: uuid("id").primaryKey().defaultRandom(),
   code: text("code").notNull().unique(),
   name: text("name").notNull(),
+  fundCode: text("fund_code").references(() => funds.code, { onDelete: "set null", onUpdate: "cascade" }),
+  /** Exactly as Aplos shows the tag, e.g. "211 - FOOTHILL HIGH SCHOOL", for the import file. */
+  aplosName: text("aplos_name"),
+  /** Staff can pick it. Admins turn off tags that aren't for reimbursements. */
   active: boolean("active").notNull().default(true),
   createdAt: createdAt(),
 });
@@ -300,7 +341,10 @@ export const requestItems = pgTable(
     requestId: uuid("request_id").references(() => requests.id, { onDelete: "set null" }),
     itemDate: date("item_date").notNull(),
     purpose: text("purpose").notNull(),
-    programId: uuid("program_id").references(() => programs.id),
+    /** The school or site it's charged to. */
+    siteId: uuid("site_id").references(() => sites.id),
+    /** Direct or indirect. Required for trips; phone bills use their own account. */
+    costType: costType("cost_type"),
     notes: text("notes"),
     amountCents: integer("amount_cents").notNull(),
     createdAt: createdAt(),
@@ -341,12 +385,15 @@ export const mileageDetails = pgTable(
     miles: numeric("miles", { precision: 7, scale: 1 }).notNull(),
     /** Required when the claimed miles differ from the estimate. */
     overrideReason: text("override_reason"),
+    /** Parking paid on the trip, in cents (0 if none). Part of the item's amount. */
+    parkingCents: integer("parking_cents").notNull().default(0),
     /** The rate this trip was calculated with (copied, so later rate changes don't alter it). */
     rateId: uuid("rate_id").references(() => rates.id),
     rateCents: numeric("rate_cents", { precision: 7, scale: 2 }).notNull(),
   },
   (t) => [
     check("mileage_miles_positive", sql`${t.miles} > 0`),
+    check("mileage_parking_range", sql`${t.parkingCents} >= 0 and ${t.parkingCents} <= 50000`),
     check(
       "mileage_override_needs_reason",
       sql`${t.milesEstimated} is null or ${t.miles} = ${t.milesEstimated} or coalesce(btrim(${t.overrideReason}), '') <> ''`,
@@ -445,7 +492,8 @@ export const tripView = pgView("trip_view", {
   requestId: uuid("request_id"),
   itemDate: date("item_date").notNull(),
   purpose: text("purpose").notNull(),
-  programId: uuid("program_id"),
+  siteId: uuid("site_id"),
+  costType: costType("cost_type"),
   notes: text("notes"),
   amountCents: integer("amount_cents").notNull(),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull(),
@@ -463,6 +511,7 @@ export const tripView = pgView("trip_view", {
   milesEstimated: numeric("miles_estimated", { precision: 7, scale: 1 }),
   miles: numeric("miles", { precision: 7, scale: 1 }).notNull(),
   overrideReason: text("override_reason"),
+  parkingCents: integer("parking_cents").notNull(),
   rateId: uuid("rate_id"),
   rateCents: numeric("rate_cents", { precision: 7, scale: 2 }).notNull(),
   involvesHome: boolean("involves_home").notNull(),

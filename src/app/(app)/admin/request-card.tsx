@@ -5,6 +5,8 @@ import { useState } from "react";
 import { useFormAction } from "@/components/use-form-action";
 import { Button, Field, Notice } from "@/components/ui";
 import { approveRequest, rejectRequest, type ReviewState } from "./actions";
+import { SiteSelect } from "@/components/site-select";
+import type { SiteGroup } from "@/lib/sites";
 
 type Props = {
   request: {
@@ -17,7 +19,7 @@ type Props = {
     matchedName: string | null;
   };
   coordinators: { id: string; fullName: string }[];
-  programs: { id: string; code: string; name: string }[];
+  siteGroups: SiteGroup[];
 };
 
 const ROLES = [
@@ -27,7 +29,7 @@ const ROLES = [
   { value: "admin", label: "Admin", hint: "Manages people and settings" },
 ];
 
-export function AccessRequestCard({ request, coordinators, programs }: Props) {
+export function AccessRequestCard({ request, coordinators, siteGroups }: Props) {
   const [mode, setMode] = useState<"idle" | "approve" | "reject">("idle");
   const [approved, approve, approving] = useFormAction<ReviewState>(approveRequest.bind(null, request.id), {});
   const [rejected, reject, rejecting] = useFormAction<ReviewState>(rejectRequest.bind(null, request.id), {});
@@ -97,15 +99,8 @@ export function AccessRequestCard({ request, coordinators, programs }: Props) {
               ))}
             </select>
           </Field>
-          <Field label="Usual program" htmlFor={`prog-${id}`} optional hint="Filled in on their new trips.">
-            <select id={`prog-${id}`} name="programId" className="field" defaultValue="">
-              <option value="">None</option>
-              {programs.map((p) => (
-                <option key={p.id} value={p.id}>
-                  {p.code}: {p.name}
-                </option>
-              ))}
-            </select>
+          <Field label="Usual school or site" htmlFor={`site-${id}`} optional hint="Filled in on their new trips and phone bills.">
+            <SiteSelect id={`site-${id}`} name="siteId" groups={siteGroups} defaultValue="" placeholder="None" />
           </Field>
           <div className="flex gap-2 sm:col-span-2">
             <Button type="submit" disabled={approving}>

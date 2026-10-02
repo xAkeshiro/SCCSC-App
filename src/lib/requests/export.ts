@@ -9,29 +9,29 @@ import { REQUEST_TYPES } from "@/lib/requests/types";
  * (brief, open question 1), so these are two generic layouts finance can map or paste from:
  * - detail: one row per trip or phone bill month (for trips, everything the IRS expects: date,
  *   destination, purpose, miles).
- * - summary: one row per employee, program and type, the lines a payment or journal entry needs.
+ * - summary: one row per employee, school or site and type.
  */
 export function batchCsv(batch: BatchDetail, format: "detail" | "summary"): string {
   const b = batchNumber(batch.ref);
   if (format === "summary") {
-    const rows = new Map<string, { employee: string; program: string; type: string; items: number; miles: number; cents: number }>();
-    const add = (employee: string, program: string | null, type: keyof typeof REQUEST_TYPES, miles: number, cents: number) => {
-      const key = `${employee}|${program ?? ""}|${type}`;
-      const row = rows.get(key) ?? { employee, program: program ?? "", type: REQUEST_TYPES[type].label, items: 0, miles: 0, cents: 0 };
+    const rows = new Map<string, { employee: string; site: string; type: string; items: number; miles: number; cents: number }>();
+    const add = (employee: string, site: string | null, type: keyof typeof REQUEST_TYPES, miles: number, cents: number) => {
+      const key = `${employee}|${site ?? ""}|${type}`;
+      const row = rows.get(key) ?? { employee, site: site ?? "", type: REQUEST_TYPES[type].label, items: 0, miles: 0, cents: 0 };
       row.items += 1;
       row.miles += miles;
       row.cents += cents;
       rows.set(key, row);
     };
     for (const c of batch.claims) {
-      for (const t of c.trips) add(c.ownerName, t.programCode, "mileage", Number(t.miles), t.amountCents);
-      for (const m of c.phoneMonths) add(c.ownerName, m.programCode, "phone", 0, m.amountCents);
+      for (const t of c.trips) add(c.ownerName, t.siteCode, "mileage", Number(t.miles), t.amountCents);
+      for (const m of c.phoneMonths) add(c.ownerName, m.siteCode, "phone", 0, m.amountCents);
     }
     return toCsv(
-      ["Batch", "Pay period start", "Pay period end", "Employee", "Program code", "Type", "Trips or months", "Miles", "Amount"],
+      ["Batch", "Pay period start", "Pay period end", "Employee", "School or site", "Type", "Trips or months", "Miles", "Amount"],
       [...rows.values()]
-        .sort((x, y) => x.employee.localeCompare(y.employee) || x.program.localeCompare(y.program) || x.type.localeCompare(y.type))
-        .map((r) => [b, batch.periodStart, batch.periodEnd, r.employee, r.program, r.type, r.items, r.miles.toFixed(1), dollars(r.cents)]),
+        .sort((x, y) => x.employee.localeCompare(y.employee) || x.site.localeCompare(y.site) || x.type.localeCompare(y.type))
+        .map((r) => [b, batch.periodStart, batch.periodEnd, r.employee, r.site, r.type, r.items, r.miles.toFixed(1), dollars(r.cents)]),
     );
   }
   return toCsv(
@@ -48,7 +48,7 @@ export function batchCsv(batch: BatchDetail, format: "detail" | "summary"): stri
       "To",
       "Round trip",
       "Business purpose",
-      "Program code",
+      "School or site",
       "Miles",
       "Rate (cents)",
       "Rate per",
@@ -69,7 +69,7 @@ export function batchCsv(batch: BatchDetail, format: "detail" | "summary"): stri
           t.toLabel,
           t.roundTrip,
           t.purpose,
-          t.programCode ?? "",
+          t.siteCode ?? "",
           Number(t.miles).toFixed(1),
           Number(t.rateCents).toFixed(2),
           "mile",
@@ -85,7 +85,7 @@ export function batchCsv(batch: BatchDetail, format: "detail" | "summary"): stri
           "",
           "",
           `Phone bill, ${formatMonth(m.month)}`,
-          m.programCode ?? "",
+          m.siteCode ?? "",
           "",
           Number(m.rateCents).toFixed(2),
           "month",

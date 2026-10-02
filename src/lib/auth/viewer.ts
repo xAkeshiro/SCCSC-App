@@ -16,7 +16,8 @@ export type Viewer = {
   fullName: string;
   roles: Role[];
   coordinatorId: string | null;
-  defaultProgramId: string | null;
+  /** Their usual school or site. */
+  defaultSiteId: string | null;
 };
 
 /** The signed-in, active staff member, or null. Memoized per request. */
@@ -33,7 +34,7 @@ export const getViewer = cache(async (): Promise<Viewer | null> => {
       fullName: me.fullName,
       roles: roles.map((r) => r.role),
       coordinatorId: me.coordinatorId,
-      defaultProgramId: me.defaultProgramId,
+      defaultSiteId: me.defaultSiteId,
     };
   });
 });

@@ -15,7 +15,7 @@ export function parseReportFilters(params: Record<string, string | string[] | un
     from: date(one("from")) || `${today.slice(0, 4)}-01-01`,
     to: date(one("to")) || today,
     staffId: one("staff") || null,
-    programId: one("program") || null,
+    siteId: one("site") || null,
     statuses: statuses.length ? statuses : DEFAULT_STATUSES,
     type: one("type") === "mileage" || one("type") === "phone" ? (one("type") as "mileage" | "phone") : "all",
   };
@@ -24,7 +24,7 @@ export function parseReportFilters(params: Record<string, string | string[] | un
 export function reportQuery(f: ReportFilters) {
   const q = new URLSearchParams({ from: f.from, to: f.to });
   if (f.staffId) q.set("staff", f.staffId);
-  if (f.programId) q.set("program", f.programId);
+  if (f.siteId) q.set("site", f.siteId);
   if (f.type !== "all") q.set("type", f.type);
   for (const s of f.statuses) q.append("status", s);
   return q.toString();

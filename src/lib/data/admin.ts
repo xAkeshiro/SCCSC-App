@@ -1,11 +1,12 @@
 import "server-only";
 
 import { and, asc, desc, eq, inArray, isNull, ne } from "drizzle-orm";
-import { accessRequests, programs, staff, staffPrivate, staffRoles } from "@/db/schema";
+import { accessRequests, staff, staffPrivate, staffRoles } from "@/db/schema";
 import { withUser } from "@/db/with-user";
 import type { Role, Viewer } from "@/lib/auth/viewer";
 import { UserError } from "@/lib/errors";
 import { cleanName } from "@/lib/names";
+import { findActiveSite, siteGroups } from "./sites";
 
 export const ALL_ROLES: Role[] = ["employee", "coordinator", "finance", "admin"];
 
@@ -27,7 +28,6 @@ export async function adminOverview(viewer: Viewer) {
       .orderBy(asc(staff.fullName));
     const roles = await tx.select().from(staffRoles);
     const requests = await tx.select().from(accessRequests).orderBy(desc(accessRequests.createdAt));
-    const programList = await tx.select().from(programs).where(eq(programs.active, true)).orderBy(asc(programs.code));
 
     const staffWithRoles = people.map((p) => ({
       ...p,
@@ -44,7 +44,7 @@ export async function adminOverview(viewer: Viewer) {
         .filter((r) => r.status !== "pending")
         .slice(0, 8)
         .map((r) => ({ ...r, reviewerName: r.reviewedBy ? (byId.get(r.reviewedBy)?.fullName ?? null) : null })),
-      programs: programList,
+      siteGroups: await siteGroups(tx),
     };
   });
 }
@@ -54,7 +54,7 @@ export type ApproveInput = {
   fullName: string;
   roles: Role[];
   coordinatorId: string | null;
-  programId: string | null;
+  siteId: string | null;
 };
 
 /** Approves an access request: links the roster entry with the same email or phone, or adds a new staff member. */
@@ -77,7 +77,7 @@ export async function approveAccessRequest(viewer: Viewer, input: ApproveInput) 
       // The email or phone is on the roster (the name typed didn't match exactly): link to that person.
       const [linked] = await tx
         .update(staff)
-        .set({ userId: req.userId, coordinatorId: input.coordinatorId, defaultProgramId: input.programId, status: "active", updatedAt: new Date() })
+        .set({ userId: req.userId, coordinatorId: input.coordinatorId, defaultSiteId: (await findActiveSite(tx, input.siteId))?.id ?? null, status: "active", updatedAt: new Date() })
         .where(and(eq(staff.id, sameContact.staffId), isNull(staff.userId)))
         .returning({ id: staff.id });
       if (!linked) {
@@ -93,7 +93,7 @@ export async function approveAccessRequest(viewer: Viewer, input: ApproveInput) 
           fullName: cleanName(input.fullName) || req.fullName,
           source: "request",
           coordinatorId: input.coordinatorId,
-          defaultProgramId: input.programId,
+          defaultSiteId: (await findActiveSite(tx, input.siteId))?.id ?? null,
         })
         .returning({ id: staff.id });
       staffId = created.id;

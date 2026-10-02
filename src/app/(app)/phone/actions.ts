@@ -25,7 +25,7 @@ export async function claimPhone(_prev: PickerState, formData: FormData): Promis
   try {
     id = await claimPhoneBill(viewer, {
       months: formData.getAll("month").map((v) => str(v, 10)),
-      programId: str(formData.get("programId"), 64) || null,
+      siteId: str(formData.get("siteId"), 64) || null,
       note: str(formData.get("note")),
       files: await billFiles(formData),
     });

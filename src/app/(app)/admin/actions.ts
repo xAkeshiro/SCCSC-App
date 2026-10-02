@@ -14,9 +14,9 @@ export async function approveRequest(requestId: string, _prev: ReviewState, form
   const roles = formData.getAll("roles").filter((r): r is Role => ALL_ROLES.includes(r as Role));
   if (roles.length === 0) return { error: "Choose at least one role." };
   const coordinatorId = str(formData.get("coordinatorId")) || null;
-  const programId = str(formData.get("programId")) || null;
+  const siteId = str(formData.get("siteId")) || null;
   try {
-    await approveAccessRequest(viewer, { requestId, fullName: str(formData.get("fullName"), 120), roles, coordinatorId, programId });
+    await approveAccessRequest(viewer, { requestId, fullName: str(formData.get("fullName"), 120), roles, coordinatorId, siteId });
   } catch (err) {
     return { error: errorMessage(err) };
   }

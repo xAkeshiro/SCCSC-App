@@ -49,7 +49,7 @@ export default async function EditTripPage({ params, searchParams }: PageProps<"
     );
   }
 
-  const options = await tripFormOptions(viewer);
+  const options = await tripFormOptions(viewer, trip.siteId);
   const point = (placeId: string | null, address: string | null) =>
     placeId && options.places.some((p) => p.id === placeId) ? { place: placeId, address: "" } : { place: "other", address: address ?? "" };
 
@@ -87,7 +87,9 @@ export default async function EditTripPage({ params, searchParams }: PageProps<"
           miles: trip.overrideReason || trip.milesEstimated === null ? trip.miles : null,
           overrideReason: trip.overrideReason ?? "",
           purpose: trip.purpose,
-          programId: trip.programId ?? "",
+          siteId: trip.siteId ?? "",
+          costType: trip.costType ?? "",
+          parking: trip.parkingCents ? (trip.parkingCents / 100).toFixed(2) : "",
           notes: trip.notes ?? "",
         }}
       />

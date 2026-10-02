@@ -10,6 +10,8 @@ import { parseReportFilters, reportQuery } from "@/lib/requests/report-filters";
 import { STATUS_LABEL, claimNumber } from "@/lib/requests/status";
 import { REQUEST_TYPES } from "@/lib/requests/types";
 import { ReportDownloadButton } from "./download-button";
+import { SiteSelect } from "@/components/site-select";
+import { siteLabel } from "@/lib/sites";
 
 export const metadata: Metadata = { title: "Reports" };
 
@@ -25,7 +27,7 @@ export default async function ReportsPage({ searchParams }: PageProps<"/finance/
       <PageHeader
         eyebrow="Finance"
         title="Reimbursement report"
-        description="Totals by employee and by program or grant, for any dates. Trips count on the day they were driven, phone bills on the first day of their month."
+        description="Totals by employee, district, and school or site, for any dates. Trips count on the day they were driven, phone bills on the first day of their month."
       />
 
       <form method="get" className="card grid gap-4 p-5 sm:grid-cols-2 lg:grid-cols-4 sm:p-6">
@@ -57,15 +59,8 @@ export default async function ReportsPage({ searchParams }: PageProps<"/finance/
           </select>
         </div>
         <div>
-          <label htmlFor="program" className="field-label">Program</label>
-          <select id="program" name="program" defaultValue={filters.programId ?? ""} className="field">
-            <option value="">All programs</option>
-            {report.programs.map((p) => (
-              <option key={p.id} value={p.id}>
-                {p.code}: {p.name}
-              </option>
-            ))}
-          </select>
+          <label htmlFor="site" className="field-label">School or site</label>
+          <SiteSelect id="site" name="site" groups={report.siteGroups} defaultValue={filters.siteId ?? ""} placeholder="All schools and sites" />
         </div>
         <fieldset className="sm:col-span-2 lg:col-span-2">
           <legend className="field-label">Claims that are</legend>
@@ -98,8 +93,9 @@ export default async function ReportsPage({ searchParams }: PageProps<"/finance/
 
       <div className="mt-4 grid grid-cols-1 gap-6 lg:grid-cols-2">
         {[
-          { title: "By employee", rows: report.byEmployee },
-          { title: "By program or grant", rows: report.byProgram },
+          { title: "By employee", column: "Employee", rows: report.byEmployee },
+          { title: "By district", column: "District", rows: report.byDistrict },
+          { title: "By school or site", column: "School or site", rows: report.bySite },
         ].map((g) => (
           <section key={g.title} aria-label={g.title}>
             <h2 className="text-2xl">{g.title}</h2>
@@ -107,7 +103,7 @@ export default async function ReportsPage({ searchParams }: PageProps<"/finance/
               <table className="w-full text-left">
                 <thead className="border-b border-ink-100 text-sm text-ink-500">
                   <tr>
-                    <th scope="col" className="px-5 py-3 font-semibold">{g.title === "By employee" ? "Employee" : "Program"}</th>
+                    <th scope="col" className="px-5 py-3 font-semibold">{g.column}</th>
                     <th scope="col" className="px-5 py-3 text-right font-semibold">Trips</th>
                     <th scope="col" className="px-5 py-3 text-right font-semibold">Miles</th>
                     <th scope="col" className="px-5 py-3 text-right font-semibold">Phone months</th>
@@ -150,7 +146,7 @@ export default async function ReportsPage({ searchParams }: PageProps<"/finance/
                   <th scope="col" className="px-4 py-3 font-semibold">Date</th>
                   <th scope="col" className="px-4 py-3 font-semibold">Employee</th>
                   <th scope="col" className="px-4 py-3 font-semibold">What</th>
-                  <th scope="col" className="px-4 py-3 font-semibold">Program</th>
+                  <th scope="col" className="px-4 py-3 font-semibold">School or site</th>
                   <th scope="col" className="px-4 py-3 font-semibold">Claim</th>
                   <th scope="col" className="px-4 py-3 text-right font-semibold">Miles</th>
                   <th scope="col" className="px-4 py-3 text-right font-semibold">Amount</th>
@@ -167,7 +163,10 @@ export default async function ReportsPage({ searchParams }: PageProps<"/finance/
                       {t.type === "phone" ? REQUEST_TYPES.phone.label : t.purpose}
                       {t.type === "mileage" ? <span className="block text-sm text-ink-500">{t.detail}</span> : null}
                     </td>
-                    <td className="px-4 py-2.5">{t.programCode}</td>
+                    <td className="px-4 py-2.5">
+                      {t.siteCode ? siteLabel({ code: t.siteCode, name: t.siteName ?? "" }) : "—"}
+                      {t.fundName ? <span className="block text-sm text-ink-500">{t.fundName}</span> : null}
+                    </td>
                     <td className="px-4 py-2.5">
                       {claimNumber(t.claimRef, t.type)}
                       <StatusBadge status={t.claimStatus} className="mt-1 block w-fit" />

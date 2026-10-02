@@ -9,6 +9,7 @@ import { formatCents, formatRate } from "@/lib/money";
 import { formatMonth } from "@/lib/requests/phone";
 import { routeText } from "@/lib/requests/pickable";
 import { ACTION_LABEL, STATUS_LABEL, claimNumber } from "@/lib/requests/status";
+import { siteLabel } from "@/lib/sites";
 
 export const metadata: Metadata = { title: "Print claim" };
 
@@ -53,7 +54,7 @@ export default async function PrintClaimPage({ params }: PageProps<"/print/claim
           <thead>
             <tr className="border-b border-ink text-[12px]">
               <th className="py-1.5 pr-2 font-semibold">Month</th>
-              <th className="py-1.5 pr-2 font-semibold">Program</th>
+              <th className="py-1.5 pr-2 font-semibold">School or site</th>
               <th className="py-1.5 pr-2 text-right font-semibold">Rate</th>
               <th className="py-1.5 text-right font-semibold">Amount</th>
             </tr>
@@ -62,7 +63,7 @@ export default async function PrintClaimPage({ params }: PageProps<"/print/claim
             {claim.phoneMonths.map((m) => (
               <tr key={m.id} className="border-b border-ink-100">
                 <td className="py-1.5 pr-2">{formatMonth(m.month)}</td>
-                <td className="py-1.5 pr-2">{m.programCode}</td>
+                <td className="py-1.5 pr-2">{siteLabel(m.siteCode ? { code: m.siteCode, name: m.siteName ?? "" } : null)}</td>
                 <td className="py-1.5 pr-2 text-right">{formatCents(Math.round(Number(m.rateCents)))} a month</td>
                 <td className="py-1.5 text-right">{formatCents(m.amountCents)}</td>
               </tr>
@@ -84,7 +85,7 @@ export default async function PrintClaimPage({ params }: PageProps<"/print/claim
             <th className="py-1.5 pr-2 font-semibold">Date</th>
             <th className="py-1.5 pr-2 font-semibold">Route</th>
             <th className="py-1.5 pr-2 font-semibold">Business purpose</th>
-            <th className="py-1.5 pr-2 font-semibold">Program</th>
+            <th className="py-1.5 pr-2 font-semibold">School or site</th>
             <th className="py-1.5 pr-2 text-right font-semibold">Miles</th>
             <th className="py-1.5 pr-2 text-right font-semibold">Rate</th>
             <th className="py-1.5 text-right font-semibold">Amount</th>
@@ -99,7 +100,7 @@ export default async function PrintClaimPage({ params }: PageProps<"/print/claim
                 {t.overrideReason ? <div className="text-[11px] text-ink-500">Miles changed: {t.overrideReason}</div> : null}
               </td>
               <td className="py-1.5 pr-2">{t.purpose}</td>
-              <td className="py-1.5 pr-2">{t.programCode}</td>
+              <td className="py-1.5 pr-2">{siteLabel(t.siteCode ? { code: t.siteCode, name: t.siteName ?? "" } : null)}</td>
               <td className="py-1.5 pr-2 text-right">{Number(t.miles).toFixed(1)}</td>
               <td className="py-1.5 pr-2 text-right whitespace-nowrap">{formatRate(t.rateCents).replace(" per mile", "")}</td>
               <td className="py-1.5 text-right">{formatCents(t.amountCents)}</td>

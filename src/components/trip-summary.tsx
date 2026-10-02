@@ -56,7 +56,9 @@ export function TripSummary({ trip, showRate = false }: { trip: TripRecord; show
         {trip.notes ? <p className="mt-0.5 text-sm text-ink-500">Note: {trip.notes}</p> : null}
         {trip.overrideReason ? <p className="mt-0.5 text-sm text-ink-500">Why the miles changed: {trip.overrideReason}</p> : null}
         <div className="mt-2 flex flex-wrap items-center gap-2">
-          {trip.programCode ? <Chip title={trip.programName ?? undefined}>{trip.programCode}</Chip> : null}
+          {trip.costType ? <Chip>{trip.costType === "direct" ? "Direct" : "Indirect"}</Chip> : null}
+          {trip.siteCode ? <Chip title={trip.siteName ?? undefined}>{trip.siteName ?? trip.siteCode}</Chip> : null}
+          {trip.parkingCents > 0 ? <Chip>Parking {formatCents(trip.parkingCents)}</Chip> : null}
         </div>
         <TripFlags trip={trip} />
       </div>

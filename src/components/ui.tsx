@@ -157,7 +157,7 @@ export function Notice({
   );
 }
 
-/** Small rounded label, e.g. a program code. */
+/** Small rounded label, e.g. a school or site. */
 export function Chip({ children, className, title }: { children: ReactNode; className?: string; title?: string }) {
   return (
     <span

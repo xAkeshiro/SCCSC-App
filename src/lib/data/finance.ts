@@ -3,7 +3,7 @@ import "server-only";
 import { and, asc, desc, eq, inArray, sql } from "drizzle-orm";
 import { alias } from "drizzle-orm/pg-core";
 import { z } from "zod";
-import { batches, programs, requestEvents, requests, staff } from "@/db/schema";
+import { batches, requestEvents, requests, staff } from "@/db/schema";
 import { rows, uuidArray, withUser } from "@/db/with-user";
 import type { Viewer } from "@/lib/auth/viewer";
 import { UserError } from "@/lib/errors";
@@ -11,7 +11,9 @@ import type { RequestStatus } from "@/lib/requests/status";
 import { formatMonth } from "@/lib/requests/phone";
 import { asRequestType, type RequestType } from "@/lib/requests/types";
 import { phoneMonthsForRequests } from "./phone";
+import { siteGroups } from "./sites";
 import { tripsForRequests } from "./trips";
+import { siteLabel } from "@/lib/sites";
 
 const isUuid = (id: string) => z.string().uuid().safeParse(id).success;
 const isDate = (d: string) => /^\d{4}-\d{2}-\d{2}$/.test(d) && !Number.isNaN(Date.parse(d));
@@ -160,21 +162,21 @@ export async function batchDetail(viewer: Viewer, id: string) {
           .orderBy(desc(requestEvents.createdAt))
       : [];
 
-    const byProgram = new Map<string, { code: string; name: string; miles: number; cents: number; trips: number; months: number }>();
-    const programRow = (code: string | null, name: string | null) => {
+    const bySite = new Map<string, { code: string; name: string; fundCode: string | null; miles: number; cents: number; trips: number; months: number }>();
+    const siteRow = (code: string | null, name: string | null, fundCode: string | null) => {
       const key = code ?? "none";
-      const row = byProgram.get(key) ?? { code: code ?? "None", name: name ?? "No program", miles: 0, cents: 0, trips: 0, months: 0 };
-      byProgram.set(key, row);
+      const row = bySite.get(key) ?? { code: code ?? "None", name: name ?? "No school or site", fundCode, miles: 0, cents: 0, trips: 0, months: 0 };
+      bySite.set(key, row);
       return row;
     };
     for (const t of trips) {
-      const row = programRow(t.programCode, t.programName);
+      const row = siteRow(t.siteCode, t.siteName, t.fundCode);
       row.miles += Number(t.miles);
       row.cents += t.amountCents;
       row.trips += 1;
     }
     for (const m of phoneMonths) {
-      const row = programRow(m.programCode, m.programName);
+      const row = siteRow(m.siteCode, m.siteName, m.fundCode);
       row.cents += m.amountCents;
       row.months += 1;
     }
@@ -195,7 +197,7 @@ export async function batchDetail(viewer: Viewer, id: string) {
           approvedAt: approval?.createdAt ?? null,
         };
       }),
-      byProgram: [...byProgram.values()].sort((a, b) => a.code.localeCompare(b.code)),
+      bySite: [...bySite.values()].sort((a, b) => (Number(a.fundCode) || 0) - (Number(b.fundCode) || 0) || a.name.localeCompare(b.name)),
     };
   });
 }
@@ -252,7 +254,7 @@ export type ReportFilters = {
   from: string;
   to: string;
   staffId: string | null;
-  programId: string | null;
+  siteId: string | null;
   statuses: RequestStatus[];
   type: ReportType;
 };
@@ -267,7 +269,9 @@ export type ReportLine = {
   ownerName: string;
   claimRef: number;
   claimStatus: RequestStatus;
-  programCode: string | null;
+  siteCode: string | null;
+  siteName: string | null;
+  fundName: string | null;
   purpose: string;
   /** The route for a trip; the month ("July 2026") for a phone bill. */
   detail: string;
@@ -277,16 +281,15 @@ export type ReportLine = {
 
 /**
  * Trips and phone bill months in claims finance can see, filtered by date (a trip's date, or the
- * first day of a phone bill's month), type, employee, program and claim status.
+ * first day of a phone bill's month), type, employee, school or site and claim status.
  */
 export async function reimbursementReport(viewer: Viewer, f: ReportFilters) {
   return withUser(viewer.userId, async (tx) => {
     const people = await tx.select({ id: staff.id, fullName: staff.fullName }).from(staff).orderBy(asc(staff.fullName));
-    const programList = await tx.select({ id: programs.id, code: programs.code, name: programs.name }).from(programs).orderBy(asc(programs.code));
     const statuses = f.statuses.filter((s) => REPORT_STATUSES.includes(s));
     const statusList = `{${(statuses.length ? statuses : REPORT_STATUSES).join(",")}}`;
     const byStaff = f.staffId && isUuid(f.staffId) ? sql`and i.owner_id = ${f.staffId}::uuid` : sql``;
-    const byProgram = f.programId && isUuid(f.programId) ? sql`and i.program_id = ${f.programId}::uuid` : sql``;
+    const bySiteFilter = f.siteId && isUuid(f.siteId) ? sql`and i.site_id = ${f.siteId}::uuid` : sql``;
 
     const tripRows =
       f.type === "phone"
@@ -297,7 +300,9 @@ export async function reimbursementReport(viewer: Viewer, f: ReportFilters) {
             owner_name: string;
             claim_ref: number;
             claim_status: RequestStatus;
-            program_code: string | null;
+            site_code: string | null;
+            site_name: string | null;
+            fund_name: string | null;
             purpose: string;
             from_label: string;
             to_label: string;
@@ -307,14 +312,16 @@ export async function reimbursementReport(viewer: Viewer, f: ReportFilters) {
           }>(
             tx,
             sql`select i.id, i.item_date::text, s.full_name as owner_name, r.ref::int as claim_ref, r.status as claim_status,
-                       p.code as program_code, i.purpose, i.from_label, i.to_label, i.round_trip, i.miles::text, i.amount_cents
+                       p.code as site_code, p.name as site_name, f.name as fund_name,
+                       i.purpose, i.from_label, i.to_label, i.round_trip, i.miles::text, i.amount_cents
                 from public.trip_view i
                 join public.requests r on r.id = i.request_id
                 join public.staff s on s.id = i.owner_id
-                left join public.programs p on p.id = i.program_id
+                left join public.sites p on p.id = i.site_id
+                left join public.funds f on f.code = p.fund_code
                 where i.item_date between ${f.from}::date and ${f.to}::date
                   and r.status::text = any(${statusList}::text[])
-                  ${byStaff} ${byProgram}`,
+                  ${byStaff} ${bySiteFilter}`,
           );
     const phoneRows =
       f.type === "mileage"
@@ -325,21 +332,24 @@ export async function reimbursementReport(viewer: Viewer, f: ReportFilters) {
             owner_name: string;
             claim_ref: number;
             claim_status: RequestStatus;
-            program_code: string | null;
+            site_code: string | null;
+            site_name: string | null;
+            fund_name: string | null;
             purpose: string;
             amount_cents: number;
           }>(
             tx,
             sql`select i.id, d.month::text as month, s.full_name as owner_name, r.ref::int as claim_ref, r.status as claim_status,
-                       p.code as program_code, i.purpose, i.amount_cents
+                       p.code as site_code, p.name as site_name, f.name as fund_name, i.purpose, i.amount_cents
                 from public.request_items i
                 join public.phone_details d on d.item_id = i.id
                 join public.requests r on r.id = i.request_id
                 join public.staff s on s.id = i.owner_id
-                left join public.programs p on p.id = i.program_id
+                left join public.sites p on p.id = i.site_id
+                left join public.funds f on f.code = p.fund_code
                 where d.month between ${f.from}::date and ${f.to}::date
                   and r.status::text = any(${statusList}::text[])
-                  ${byStaff} ${byProgram}`,
+                  ${byStaff} ${bySiteFilter}`,
           );
 
     const lines: ReportLine[] = [
@@ -350,7 +360,9 @@ export async function reimbursementReport(viewer: Viewer, f: ReportFilters) {
         ownerName: r.owner_name,
         claimRef: r.claim_ref,
         claimStatus: r.claim_status,
-        programCode: r.program_code,
+        siteCode: r.site_code,
+        siteName: r.site_name,
+        fundName: r.fund_name,
         purpose: r.purpose,
         detail: `${r.from_label} → ${r.to_label}${r.round_trip ? " and back" : ""}`,
         miles: Number(r.miles),
@@ -363,7 +375,9 @@ export async function reimbursementReport(viewer: Viewer, f: ReportFilters) {
         ownerName: r.owner_name,
         claimRef: r.claim_ref,
         claimStatus: r.claim_status,
-        programCode: r.program_code,
+        siteCode: r.site_code,
+        siteName: r.site_name,
+        fundName: r.fund_name,
         purpose: r.purpose,
         detail: formatMonth(r.month),
         miles: null,
@@ -386,10 +400,11 @@ export async function reimbursementReport(viewer: Viewer, f: ReportFilters) {
     };
     return {
       people,
-      programs: programList,
+      siteGroups: await siteGroups(tx),
       lines,
       byEmployee: group((l) => l.ownerName),
-      byProgram: group((l) => l.programCode ?? "None"),
+      bySite: group((l) => (l.siteCode ? siteLabel({ code: l.siteCode, name: l.siteName ?? "" }) : "No school or site")),
+      byDistrict: group((l) => l.fundName ?? "No district"),
       totals: {
         trips: lines.filter((l) => l.type === "mileage").length,
         months: lines.filter((l) => l.type === "phone").length,

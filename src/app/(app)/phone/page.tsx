@@ -80,8 +80,8 @@ export default async function PhoneBillPage() {
                 field="month"
                 action={claimPhone}
                 submitLabel="Claim phone bill"
-                programs={o.programs}
-                defaultProgramId={o.defaultProgramId}
+                siteGroups={o.siteGroups}
+                defaultSiteId={o.defaultSiteId}
               />
             ) : null}
           </section>

@@ -14,7 +14,7 @@ let adm: string;
 
 beforeAll(async () => {
   t = await createTestDb();
-  adm = (await rows<{ id: string }>(t.db, sql`select id from public.programs where code = 'ADM'`))[0].id;
+  adm = (await rows<{ id: string }>(t.db, sql`select id from public.sites where code = '9'`))[0].id;
 });
 afterAll(async () => {
   await t.close();
@@ -23,7 +23,7 @@ afterAll(async () => {
 const bill = (name = "bill.pdf") => ({ name, bytes: fakeBillPdf(["SAMPLE WIRELESS - FAKE TEST BILL"]) });
 
 const claim = (months: string[], person: "hazel" | "sam" = "hazel", files = [bill()]) =>
-  as(t, person, (tx) => claimPhoneMonths(tx, staffIdOf(person), { months, programId: adm, note: "", files }, TODAY));
+  as(t, person, (tx) => claimPhoneMonths(tx, staffIdOf(person), { months, siteId: adm, note: "", files }, TODAY));
 
 const failure = (p: Promise<unknown>) =>
   p.then(

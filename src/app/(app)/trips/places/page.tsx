@@ -70,7 +70,7 @@ export default async function PlacesPage({ searchParams }: PageProps<"/trips/pla
           <h2 id="shared" className="text-2xl">
             Shared places
           </h2>
-          <p className="text-ink-500">Offices and program sites everyone can pick. Admins keep this list up to date.</p>
+          <p className="text-ink-500">Offices and school sites everyone can pick. Admins keep this list up to date.</p>
           <ul className="card divide-y divide-ink-100">
             {shared.map((p) => (
               <li key={p.id} className="flex gap-3 px-5 py-3">

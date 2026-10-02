@@ -8,7 +8,7 @@ let t: TestDb;
 let office: string;
 let cedar: string;
 let rowanHome: string;
-let program: string;
+let site: string;
 
 beforeAll(async () => {
   t = await createTestDb();
@@ -16,7 +16,7 @@ beforeAll(async () => {
   office = places.find((p) => p.label === "Main office")!.id;
   cedar = places.find((p) => p.label === "Cedar Grove Elementary")!.id;
   rowanHome = places.find((p) => p.label === "Home" && p.owner_id === "00000000-0000-4000-8000-000000000101")!.id;
-  program = (await rows<{ id: string }>(t.db, sql`select id from public.programs where code = 'EXL'`))[0].id;
+  site = (await rows<{ id: string }>(t.db, sql`select id from public.sites where code = '211'`))[0].id;
 });
 afterAll(async () => {
   await t.close();
@@ -32,7 +32,9 @@ function trip(overrides: Partial<TripInput> = {}): TripInput {
     miles: "",
     overrideReason: "",
     purpose: "Site visit",
-    programId: program,
+    siteId: site,
+    costType: "direct",
+    parking: "",
     notes: "",
     ...overrides,
   };
@@ -47,8 +49,10 @@ describe("working out a trip", () => {
     const d = result.trip.details;
     expect(d.milesEstimated).toBe(d.miles);
     expect(Number(d.miles)).toBeGreaterThan(4);
-    expect(d.rateCents).toBe("72.50");
-    expect(result.trip.amountCents).toBe(Math.floor((Number(d.miles) * 10 * 7250 + 500) / 1000));
+    expect(d.rateCents).toBe("76.00");
+    expect(result.trip.amountCents).toBe(Math.floor((Number(d.miles) * 10 * 7600 + 500) / 1000));
+    expect(result.trip.costType).toBe("direct");
+    expect(d.parkingCents).toBe(0);
   });
 
   it("doubles the distance for a round trip", async () => {
@@ -82,10 +86,31 @@ describe("working out a trip", () => {
     expect(given.trip.details).toMatchObject({ milesEstimated: null, miles: "6.3", toPlaceId: null, toLabel: "55 Somewhere St, Sacramento" });
   });
 
-  it("rejects future dates, missing purpose and missing program", async () => {
-    const result = await work(trip({ date: "2999-01-01", purpose: "", programId: null }));
+  it("rejects future dates, and a missing purpose, school or site, or direct/indirect", async () => {
+    const result = await work(trip({ date: "2999-01-01", purpose: "", siteId: null, costType: "" }));
     if (!("errors" in result)) throw new Error("expected errors");
-    expect(Object.keys(result.errors).sort()).toEqual(["date", "programId", "purpose"]);
+    expect(Object.keys(result.errors).sort()).toEqual(["costType", "date", "purpose", "siteId"]);
+  });
+
+  it("adds parking to the trip's amount, and checks it", async () => {
+    const plain = await work(trip());
+    const parked = await work(trip({ parking: "$6.50", costType: "indirect" }));
+    if (!("trip" in plain) || !("trip" in parked)) throw new Error("expected trips");
+    expect(parked.trip.details.parkingCents).toBe(650);
+    expect(parked.trip.amountCents).toBe(plain.trip.amountCents + 650);
+    expect(parked.trip.costType).toBe("indirect");
+    const bad = await work(trip({ parking: "six" }));
+    expect("errors" in bad && bad.errors.parking).toMatch(/dollars/);
+    const huge = await work(trip({ parking: "900" }));
+    expect("errors" in huge && huge.errors.parking).toMatch(/finance/);
+  });
+
+  it("won't charge a trip to a hidden or unknown school or site", async () => {
+    await t.db.execute(sql`update public.sites set active = false where code = '433'`);
+    const [hidden] = await rows<{ id: string }>(t.db, sql`select id from public.sites where code = '433'`);
+    const result = await work(trip({ siteId: hidden.id }));
+    expect("errors" in result && result.errors.siteId).toMatch(/from the list/);
+    await t.db.execute(sql`update public.sites set active = true where code = '433'`);
   });
 
   it("can't use someone else's saved place", async () => {

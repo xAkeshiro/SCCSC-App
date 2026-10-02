@@ -8,7 +8,7 @@ import "server-only";
 import { and, asc, desc, eq, inArray, lte, sql } from "drizzle-orm";
 import { z } from "zod";
 import type { Tx } from "@/db";
-import { phoneDetails, programs, rates, requestItems, requests } from "@/db/schema";
+import { phoneDetails, rates, requestItems, requests, sites } from "@/db/schema";
 import { rows, uuidArray, withUser } from "@/db/with-user";
 import type { Viewer } from "@/lib/auth/viewer";
 import { UserError } from "@/lib/errors";
@@ -25,6 +25,7 @@ import {
 import type { RequestStatus } from "@/lib/requests/status";
 import { readSettings } from "@/lib/settings";
 import { checkFiles, countAttachments, removeAttachments, saveAttachments, type IncomingFile } from "./attachments";
+import { findActiveSite, siteGroups, type SiteGroup } from "./sites";
 
 export const REQUEST_TYPE = "phone";
 
@@ -37,9 +38,10 @@ export type PhoneMonthRecord = {
   requestId: string | null;
   ownerId: string;
   month: Month;
-  programId: string | null;
-  programCode: string | null;
-  programName: string | null;
+  siteId: string | null;
+  siteCode: string | null;
+  siteName: string | null;
+  fundCode: string | null;
   amountCents: number;
   rateCents: string;
 };
@@ -52,15 +54,16 @@ export async function phoneMonthsForRequests(tx: Tx, requestIds: string[]): Prom
       requestId: requestItems.requestId,
       ownerId: requestItems.ownerId,
       month: phoneDetails.month,
-      programId: requestItems.programId,
-      programCode: programs.code,
-      programName: programs.name,
+      siteId: requestItems.siteId,
+      siteCode: sites.code,
+      siteName: sites.name,
+      fundCode: sites.fundCode,
       amountCents: requestItems.amountCents,
       rateCents: phoneDetails.rateCents,
     })
     .from(requestItems)
     .innerJoin(phoneDetails, eq(phoneDetails.itemId, requestItems.id))
-    .leftJoin(programs, eq(programs.id, requestItems.programId))
+    .leftJoin(sites, eq(sites.id, requestItems.siteId))
     .where(inArray(requestItems.requestId, requestIds))
     .orderBy(asc(phoneDetails.month));
 }
@@ -102,16 +105,16 @@ export type PhoneOverview = {
   /** The next period to open. */
   next: Period;
   claimed: ClaimedMonth[];
-  programs: { id: string; code: string; name: string }[];
-  defaultProgramId: string | null;
-  requireProgram: boolean;
+  siteGroups: SiteGroup[];
+  defaultSiteId: string | null;
+  requireSite: boolean;
 };
 
 export async function phoneOverview(viewer: Viewer, today = todayIso()): Promise<PhoneOverview> {
-  return withUser(viewer.userId, (tx) => phoneOverviewFor(tx, viewer.staffId, viewer.defaultProgramId, today));
+  return withUser(viewer.userId, (tx) => phoneOverviewFor(tx, viewer.staffId, viewer.defaultSiteId, today));
 }
 
-export async function phoneOverviewFor(tx: Tx, staffId: string, defaultProgramId: string | null, today: string): Promise<PhoneOverview> {
+export async function phoneOverviewFor(tx: Tx, staffId: string, defaultSiteId: string | null, today: string): Promise<PhoneOverview> {
   const settings = await readSettings(tx);
   const periods = claimablePeriods(today, settings.phoneMonthsPerClaim, settings.phonePeriodsBack);
   const claimed = await claimedMonths(tx, staffId);
@@ -129,11 +132,6 @@ export async function phoneOverviewFor(tx: Tx, staffId: string, defaultProgramId
     }
     withMonths.push({ period, months });
   }
-  const programList = await tx
-    .select({ id: programs.id, code: programs.code, name: programs.name })
-    .from(programs)
-    .where(eq(programs.active, true))
-    .orderBy(asc(programs.code));
   return {
     rateCents: rateNow?.rateCents ?? null,
     monthsPerClaim: settings.phoneMonthsPerClaim,
@@ -141,9 +139,9 @@ export async function phoneOverviewFor(tx: Tx, staffId: string, defaultProgramId
     latest: latestOpenPeriod(today, settings.phoneMonthsPerClaim),
     next: nextPeriod(today, settings.phoneMonthsPerClaim),
     claimed,
-    programs: programList,
-    defaultProgramId,
-    requireProgram: settings.requireProgram,
+    siteGroups: await siteGroups(tx),
+    defaultSiteId,
+    requireSite: settings.requireSite,
   };
 }
 
@@ -163,7 +161,7 @@ export async function phoneBillDue(viewer: Viewer, today = todayIso()) {
 
 export type PhoneClaimInput = {
   months: string[];
-  programId: string | null;
+  siteId: string | null;
   note: string;
   /** A photo or PDF of the bill (at least one). */
   files: IncomingFile[];
@@ -189,13 +187,10 @@ export async function claimPhoneMonths(tx: Tx, staffId: string, input: PhoneClai
   const already = (await claimedMonths(tx, staffId)).find((c) => months.includes(c.month));
   if (already) throw new UserError(`You've already claimed ${formatMonth(already.month)}.`);
 
-  let programId: string | null = null;
-  if (input.programId && isUuid(input.programId)) {
-    const [program] = await tx.select().from(programs).where(and(eq(programs.id, input.programId), eq(programs.active, true))).limit(1);
-    if (!program) throw new UserError("Choose a program from the list.");
-    programId = program.id;
-  }
-  if (!programId && settings.requireProgram) throw new UserError("Choose the program or grant this is charged to.");
+  const site = await findActiveSite(tx, input.siteId);
+  if (input.siteId && !site) throw new UserError("Choose a school or site from the list.");
+  if (!site && settings.requireSite) throw new UserError("Choose the school or site your phone use is for.");
+  const siteId = site?.id ?? null;
 
   const ids: string[] = [];
   for (const month of months) {
@@ -208,7 +203,7 @@ export async function claimPhoneMonths(tx: Tx, staffId: string, input: PhoneClai
         ownerId: staffId,
         itemDate: month,
         purpose: `Phone bill, ${formatMonth(month)}`,
-        programId,
+        siteId,
         amountCents: phoneAmountCents(rate.rateCents),
       })
       .returning({ id: requestItems.id });

@@ -4,6 +4,11 @@
  * demo with a real emailed code). Phone numbers use the 555-01xx range, which is reserved for
  * fiction, and emails use example.org, which is reserved for examples.
  *
+ * Budget codes are the exception too: the funds, accounts and school tags below are a small part
+ * of SCCSC's real Aplos lists (public school districts and schools, and the travel, phone and
+ * supply accounts), so a payment file made in the demo can be test-imported into Aplos. The full
+ * lists are imported by an admin (Admin → Budget codes), never stored here.
+ *
  * Dates are relative to today so the demo always looks current. Claims are spread across every
  * status, with a matching history, so each screen has something to show.
  */
@@ -43,26 +48,59 @@ const PEOPLE: {
   phone?: string;
   roles: Role[];
   coordinator: PersonKey | null;
-  program: string;
+  /** Their usual school or site (an Aplos tag code). */
+  site: string;
 }[] = [
-  { key: "rowan", name: "Rowan Ellery", email: "rowan.ellery@example.org", phone: "+19165550101", roles: ["employee"], coordinator: "lena", program: "EXL" },
-  { key: "tessa", name: "Tessa Quill", email: "tessa.quill@example.org", phone: "+19165550102", roles: ["employee"], coordinator: "lena", program: "EXL" },
-  { key: "marcus", name: "Marcus Holloway", email: "marcus.holloway@example.org", phone: "+19165550103", roles: ["employee"], coordinator: "owen", program: "YWF" },
-  { key: "lena", name: "Lena Fairbanks", email: "lena.fairbanks@example.org", phone: "+19165550104", roles: ["employee", "coordinator"], coordinator: "owen", program: "EXL" },
-  { key: "owen", name: "Owen Castellano", email: "owen.castellano@example.org", phone: "+19165550105", roles: ["employee", "coordinator"], coordinator: null, program: "YWF" },
-  { key: "hazel", name: "Hazel Brightwater", email: "hazel.brightwater@example.org", phone: "+19165550106", roles: ["employee", "finance"], coordinator: "owen", program: "ADM" },
-  { key: "sam", name: "Sam Whitlock", email: "sam.whitlock@example.org", phone: "+19165550107", roles: ["employee", "admin"], coordinator: "owen", program: "ADM" },
-  { key: "felix", name: "Felix Hartwell", email: "felix.hartwell@example.org", phone: "+19165550108", roles: ["employee"], coordinator: "lena", program: "ECV" },
-  { key: "eden", name: "Eden Redona", email: "eden.redona@sccsc.org", roles: ["employee", "admin"], coordinator: "owen", program: "ADM" },
+  { key: "rowan", name: "Rowan Ellery", email: "rowan.ellery@example.org", phone: "+19165550101", roles: ["employee"], coordinator: "lena", site: "211" },
+  { key: "tessa", name: "Tessa Quill", email: "tessa.quill@example.org", phone: "+19165550102", roles: ["employee"], coordinator: "lena", site: "211" },
+  { key: "marcus", name: "Marcus Holloway", email: "marcus.holloway@example.org", phone: "+19165550103", roles: ["employee"], coordinator: "owen", site: "252" },
+  { key: "lena", name: "Lena Fairbanks", email: "lena.fairbanks@example.org", phone: "+19165550104", roles: ["employee", "coordinator"], coordinator: "owen", site: "211" },
+  { key: "owen", name: "Owen Castellano", email: "owen.castellano@example.org", phone: "+19165550105", roles: ["employee", "coordinator"], coordinator: null, site: "431" },
+  { key: "hazel", name: "Hazel Brightwater", email: "hazel.brightwater@example.org", phone: "+19165550106", roles: ["employee", "finance"], coordinator: "owen", site: "9" },
+  { key: "sam", name: "Sam Whitlock", email: "sam.whitlock@example.org", phone: "+19165550107", roles: ["employee", "admin"], coordinator: "owen", site: "9" },
+  { key: "felix", name: "Felix Hartwell", email: "felix.hartwell@example.org", phone: "+19165550108", roles: ["employee"], coordinator: "lena", site: "123" },
+  { key: "eden", name: "Eden Redona", email: "eden.redona@sccsc.org", roles: ["employee", "admin"], coordinator: "owen", site: "9" },
 ];
 
 const NORA_EMAIL = "nora.pennington@example.org";
 
-const PROGRAMS = [
-  { code: "EXL", name: "Expanded Learning (after school)" },
-  { code: "YWF", name: "Youth Workforce" },
-  { code: "ECV", name: "Experience Corps volunteers" },
-  { code: "ADM", name: "General and administrative" },
+/** Funds: the Center and the four school districts (names as in Aplos). */
+const FUNDS = [
+  { code: "1", name: "Center/Central" },
+  { code: "100", name: "Sacramento City USD" },
+  { code: "200", name: "Twin Rivers USD" },
+  { code: "300", name: "Elk Grove USD" },
+  { code: "400", name: "Natomas USD" },
+];
+
+/** The expense accounts reimbursements are charged to (names as in Aplos), under their parent account. */
+const ACCOUNTS = [
+  { number: "5702", name: "Local Travel - auto (Direct)", parentNumber: "8550" },
+  { number: "5703", name: "Parking- to be reimbursed (Direct)", parentNumber: "8550" },
+  { number: "5700", name: "Local Travel - auto (Indirect)", parentNumber: "8551" },
+  { number: "5701", name: "Parking- to be reimbursed (Indirect)", parentNumber: "8551" },
+  { number: "5431", name: "Telephone (Direct)", parentNumber: "8552" },
+  { number: "5430", name: "Telephone (Indirect)", parentNumber: "8553" },
+  { number: "7305", name: "Classroom Supplies (Direct)", parentNumber: "8540" },
+  { number: "5310", name: "Office Supplies (Indirect)", parentNumber: "8541" },
+  { number: "7481", name: "Consumables (Direct)", parentNumber: "8554" },
+  { number: "7482", name: "Consumables (Indirect)", parentNumber: "8555" },
+];
+
+/** A few Aplos "Schools" tags per fund (public schools, and the Center's own sites). */
+const SITES = [
+  { code: "6", name: "Creekside Office", fund: "1" },
+  { code: "9", name: "T Street Building, Ping Office", fund: "1" },
+  { code: "123", name: "SEQUOIA ELEMENTARY", fund: "100" },
+  { code: "126", name: "ETHEL PHILLIPS ELEMENTARY", fund: "100" },
+  { code: "185", name: "WILLIAM LAND ELEMENTARY SCHOOL", fund: "100" },
+  { code: "211", name: "FOOTHILL HIGH SCHOOL", fund: "200" },
+  { code: "252", name: "LAS PALMAS ELEMENTARY", fund: "200" },
+  { code: "265", name: "FOOTHILL OAKS ELEMENTARY SCHOOL", fund: "200" },
+  { code: "309", name: "MONTEREY TRAIL HIGH SCHOOL", fund: "300" },
+  { code: "335", name: "BARBARA MORSE ELEMENTARY", fund: "300" },
+  { code: "431", name: "BANNON CREEK K-8 SCHOOL", fund: "400" },
+  { code: "433", name: "WITTER RANCH ELEMENTARY", fund: "400" },
 ];
 
 /** Shared places. Fictional names and addresses; coordinates are rough Sacramento-area points. */
@@ -85,7 +123,7 @@ const HOMES: Partial<Record<PersonKey, { address: string; lat: number; lng: numb
 
 const RATES = [
   { effectiveFrom: "2025-01-01", rateCents: "70.00", note: "Sample: IRS standard business rate for 2025. Confirm before go-live." },
-  { effectiveFrom: "2026-01-01", rateCents: "72.50", note: "Sample: IRS standard business rate for 2026. Confirm before go-live." },
+  { effectiveFrom: "2026-01-01", rateCents: "76.00", note: "From the 2026 mileage claim form ($0.76 a mile). Confirm before go-live." },
 ];
 
 export const DEFAULT_SETTINGS: { key: string; value: unknown; description: string }[] = [
@@ -100,7 +138,7 @@ export const DEFAULT_SETTINGS: { key: string; value: unknown; description: strin
     value: 10000,
     description: "Claims at or under this total, with no flags, can be approved in bulk.",
   },
-  { key: "require_program", value: true, description: "Every trip must have a program or grant code." },
+  { key: "require_site", value: true, description: "Every trip and phone bill must say which school or site it is for." },
   { key: "session_days", value: 30, description: "How long someone stays signed in on a device." },
   {
     key: "phone_months_per_claim",
@@ -112,6 +150,12 @@ export const DEFAULT_SETTINGS: { key: string; value: unknown; description: strin
     key: "phone_periods_back",
     value: 1,
     description: "How many earlier phone bill periods can still be claimed after the latest one opens. A starting guess; confirm with finance.",
+  },
+  {
+    key: "aplos_accounts",
+    value: { mileageDirect: "5702", mileageIndirect: "5700", parkingDirect: "5703", parkingIndirect: "5701", phone: "5430" },
+    description:
+      "Which Aplos account each kind of reimbursement goes to. Trips and parking follow the trip's direct or indirect choice. Set on Admin → Budget codes.",
   },
   {
     key: "max_trip_age_days",
@@ -156,11 +200,13 @@ async function seed(tx: Tx) {
   const nextId = idSequence();
 
   // Reference data (request types come from migration 0004) -----------------------------------
-  const programRows = await tx
-    .insert(s.programs)
-    .values(PROGRAMS.map((p) => ({ ...p, id: nextId() })))
+  await tx.insert(s.funds).values(FUNDS.map((f) => ({ ...f, aplosName: `${f.code} - ${f.name}` })));
+  await tx.insert(s.accounts).values(ACCOUNTS.map((a) => ({ ...a, aplosName: `${a.number} - ${a.name}` })));
+  const siteRows = await tx
+    .insert(s.sites)
+    .values(SITES.map((x) => ({ id: nextId(), code: x.code, name: x.name, fundCode: x.fund, aplosName: `${x.code} - ${x.name}` })))
     .returning();
-  const programId = (code: string) => programRows.find((p) => p.code === code)!.id;
+  const siteId = (code: string) => siteRows.find((x) => x.code === code)!.id;
 
   const rateRows = await tx
     .insert(s.rates)
@@ -191,7 +237,7 @@ async function seed(tx: Tx) {
       userId: DEMO[p.key].userId,
       fullName: p.name,
       source: p.key === "felix" || p.key === "eden" ? "roster" : "seed",
-      defaultProgramId: programId(p.program),
+      defaultSiteId: siteId(p.site),
     });
     await tx.insert(s.staffPrivate).values({ staffId: DEMO[p.key].staffId!, email: p.email, phoneE164: p.phone ?? null });
     await tx.insert(s.staffRoles).values(p.roles.map((role) => ({ staffId: DEMO[p.key].staffId!, role })));
@@ -238,7 +284,10 @@ async function seed(tx: Tx) {
     route: PlaceKey[];
     roundTrip?: boolean;
     purpose: string;
-    program?: string;
+    /** Direct (with students) unless said otherwise. */
+    costType?: "direct" | "indirect";
+    parking?: number;
+    site?: string;
     notes?: string;
     /** Claimed miles that differ from the estimate, with the reason. */
     override?: { miles: string; reason: string };
@@ -260,9 +309,10 @@ async function seed(tx: Tx) {
         requestId,
         itemDate: date,
         purpose: t.purpose,
-        programId: programId(t.program ?? owner.program),
+        siteId: siteId(t.site ?? owner.site),
+        costType: t.costType ?? "direct",
         notes: t.notes ?? null,
-        amountCents: mileageAmountCents(miles, rate.rateCents),
+        amountCents: mileageAmountCents(miles, rate.rateCents) + (t.parking ?? 0),
         createdAt: tsDaysAgo(t.daysAgo, 17),
       })
       .returning();
@@ -283,6 +333,7 @@ async function seed(tx: Tx) {
       milesEstimated: estimate === null ? null : normalizeMiles(estimate),
       miles,
       overrideReason: t.override?.reason ?? null,
+      parkingCents: t.parking ?? 0,
       rateId: rate.id,
       rateCents: rate.rateCents,
     });
@@ -350,7 +401,7 @@ async function seed(tx: Tx) {
     [
       { daysAgo: 9, route: ["office", "cedar"], roundTrip: true, purpose: "After-school program site visit" },
       { daysAgo: 7, route: ["office", "willow", "office"], purpose: "Deliver curriculum supplies" },
-      { daysAgo: 5, route: ["office", "county"], roundTrip: true, purpose: "Quarterly grant meeting" },
+      { daysAgo: 5, route: ["office", "county"], roundTrip: true, purpose: "Quarterly grant meeting", costType: "indirect", parking: 600 },
     ],
     [{ action: "submitted", by: "rowan", daysAgo: 3, to: "submitted" }],
   );
@@ -370,7 +421,7 @@ async function seed(tx: Tx) {
     "rowan",
     [
       { daysAgo: 44, route: ["office", "cedar"], roundTrip: true, purpose: "Program launch at Cedar Grove" },
-      { daysAgo: 42, route: ["office", "willow"], roundTrip: true, purpose: "Staff training at Willow Creek" },
+      { daysAgo: 42, route: ["office", "willow"], roundTrip: true, purpose: "Staff training at Willow Creek", costType: "indirect" },
     ],
     [
       { action: "submitted", by: "rowan", daysAgo: 40, to: "submitted" },
@@ -381,7 +432,7 @@ async function seed(tx: Tx) {
   );
 
   // Tessa: a returned claim to fix, a claim in the open batch, one trip not yet submitted.
-  await addTrip({ owner: "tessa", daysAgo: 1, route: ["office", "delta"], roundTrip: true, purpose: "Community partner meeting" }, null);
+  await addTrip({ owner: "tessa", daysAgo: 1, route: ["office", "delta"], roundTrip: true, purpose: "Community partner meeting", costType: "indirect" }, null);
   await addClaim(
     "tessa",
     [
@@ -404,7 +455,7 @@ async function seed(tx: Tx) {
     "tessa",
     [
       { daysAgo: 19, route: ["office", "willow"], roundTrip: true, purpose: "Student showcase" },
-      { daysAgo: 17, route: ["office", "county"], roundTrip: true, purpose: "Compliance training" },
+      { daysAgo: 17, route: ["office", "county"], roundTrip: true, purpose: "Compliance training", costType: "indirect", parking: 800 },
     ],
     [
       { action: "submitted", by: "tessa", daysAgo: 16, to: "submitted" },
@@ -431,8 +482,8 @@ async function seed(tx: Tx) {
   await addClaim(
     "marcus",
     [
-      { daysAgo: 29, route: ["home", "office"], purpose: "Office day" },
-      { daysAgo: 28, route: ["home", "office"], purpose: "Office day" },
+      { daysAgo: 29, route: ["home", "office"], purpose: "Office day", costType: "indirect" },
+      { daysAgo: 28, route: ["home", "office"], purpose: "Office day", costType: "indirect" },
     ],
     [
       { action: "submitted", by: "marcus", daysAgo: 27, to: "submitted" },
@@ -459,7 +510,7 @@ async function seed(tx: Tx) {
   // Owen has no coordinator, so an admin (Sam) reviews his claims.
   await addClaim(
     "owen",
-    [{ daysAgo: 12, route: ["office", "county"], roundTrip: true, purpose: "Workforce board meeting" }],
+    [{ daysAgo: 12, route: ["office", "county"], roundTrip: true, purpose: "Workforce board meeting", costType: "indirect", parking: 500 }],
     [
       { action: "submitted", by: "owen", daysAgo: 11, to: "submitted" },
       { action: "approved", by: "sam", daysAgo: 10, to: "approved" },
@@ -469,7 +520,7 @@ async function seed(tx: Tx) {
   // Hazel (finance) has a paid claim in the same batch as Rowan's.
   const hazelPaid = await addClaim(
     "hazel",
-    [{ daysAgo: 41, route: ["office", "county"], roundTrip: true, purpose: "Audit prep meeting" }],
+    [{ daysAgo: 41, route: ["office", "county"], roundTrip: true, purpose: "Audit prep meeting", costType: "indirect" }],
     [
       { action: "submitted", by: "hazel", daysAgo: 39, to: "submitted" },
       { action: "approved", by: "owen", daysAgo: 37, to: "approved" },
@@ -529,7 +580,7 @@ async function seed(tx: Tx) {
           requestId,
           itemDate: month,
           purpose: `Phone bill, ${formatMonth(month)}`,
-          programId: programId(person.program),
+          siteId: siteId(person.site),
           amountCents: phoneAmountCents(phoneRate.rateCents),
           createdAt: tsDaysAgo(daysAgo, 17),
         })

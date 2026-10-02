@@ -3,7 +3,7 @@ import "server-only";
 import { and, desc, eq, inArray, isNotNull, isNull } from "drizzle-orm";
 import { z } from "zod";
 import type { Tx } from "@/db";
-import { programs, requests, tripView } from "@/db/schema";
+import { requests, sites, tripView } from "@/db/schema";
 import { withUser } from "@/db/with-user";
 import type { Viewer } from "@/lib/auth/viewer";
 import type { RequestStatus } from "@/lib/requests/status";
@@ -15,9 +15,11 @@ export type TripRecord = {
   date: string;
   purpose: string;
   notes: string | null;
-  programId: string | null;
-  programCode: string | null;
-  programName: string | null;
+  siteId: string | null;
+  siteCode: string | null;
+  siteName: string | null;
+  fundCode: string | null;
+  costType: "direct" | "indirect" | null;
   amountCents: number;
   fromLabel: string;
   fromAddress: string | null;
@@ -32,6 +34,8 @@ export type TripRecord = {
   miles: string;
   milesEstimated: string | null;
   overrideReason: string | null;
+  /** Parking paid, in cents; part of amountCents. */
+  parkingCents: number;
   rateCents: string;
   involvesHome: boolean;
 };
@@ -43,9 +47,11 @@ const tripColumns = {
   date: tripView.itemDate,
   purpose: tripView.purpose,
   notes: tripView.notes,
-  programId: tripView.programId,
-  programCode: programs.code,
-  programName: programs.name,
+  siteId: tripView.siteId,
+  siteCode: sites.code,
+  siteName: sites.name,
+  fundCode: sites.fundCode,
+  costType: tripView.costType,
   amountCents: tripView.amountCents,
   fromLabel: tripView.fromLabel,
   fromAddress: tripView.fromAddress,
@@ -60,13 +66,14 @@ const tripColumns = {
   miles: tripView.miles,
   milesEstimated: tripView.milesEstimated,
   overrideReason: tripView.overrideReason,
+  parkingCents: tripView.parkingCents,
   rateCents: tripView.rateCents,
   involvesHome: tripView.involvesHome,
 };
 
 /** Trips as the viewer may see them (home addresses hidden unless they're the owner). */
 export function selectTrips(tx: Tx) {
-  return tx.select(tripColumns).from(tripView).leftJoin(programs, eq(programs.id, tripView.programId));
+  return tx.select(tripColumns).from(tripView).leftJoin(sites, eq(sites.id, tripView.siteId));
 }
 
 export async function tripsForRequests(tx: Tx, requestIds: string[]): Promise<TripRecord[]> {
@@ -84,7 +91,7 @@ export async function myTrips(viewer: Viewer) {
     const claimed = await tx
       .select({ ...tripColumns, claimRef: requests.ref, claimStatus: requests.status })
       .from(tripView)
-      .leftJoin(programs, eq(programs.id, tripView.programId))
+      .leftJoin(sites, eq(sites.id, tripView.siteId))
       .innerJoin(requests, eq(requests.id, tripView.requestId))
       .where(and(eq(tripView.ownerId, viewer.staffId), isNotNull(tripView.requestId)))
       .orderBy(desc(tripView.itemDate), desc(tripView.createdAt))

@@ -50,6 +50,27 @@
       "when": 1790804018271,
       "tag": "0006_attachment_security",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1790980056897,
+      "tag": "0007_sites",
+      "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1790980099320,
+      "tag": "0008_budget_codes",
+      "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1790980117434,
+      "tag": "0009_budget_security",
+      "breakpoints": true
     }
   ]
 }

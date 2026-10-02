@@ -48,11 +48,12 @@ test("a claim can be taken out of an open batch", async ({ page }) => {
   await expect(page.getByRole("region", { name: /Ready to pay/ })).toContainText("Tessa Quill");
 });
 
-test("reports total trips and phone bills by employee and program, and download as CSV", async ({ page }) => {
+test("reports total trips and phone bills by employee, district and school, and download as CSV", async ({ page }) => {
   await signInAs(page, "Hazel Brightwater");
   // From well back, so the demo's phone bill months are included whatever today's date is.
   await page.goto("/finance/reports?from=2000-01-01");
-  await expect(page.getByRole("region", { name: "By program or grant" })).toContainText("EXL");
+  await expect(page.getByRole("region", { name: "By school or site" })).toContainText("FOOTHILL HIGH SCHOOL (211)");
+  await expect(page.getByRole("region", { name: "By district" })).toContainText("Twin Rivers USD");
   const downloadPromise = page.waitForEvent("download");
   await page.getByRole("button", { name: "Download details (CSV)" }).click();
   const csv = readFileSync(await (await downloadPromise).path(), "utf8");

@@ -10,6 +10,7 @@ import { batchCsv } from "@/lib/requests/export";
 import { parseReportFilters } from "@/lib/requests/report-filters";
 import { STATUS_LABEL, batchNumber, claimNumber } from "@/lib/requests/status";
 import { REQUEST_TYPES } from "@/lib/requests/types";
+import { siteLabel } from "@/lib/sites";
 
 export type FinanceState = { error?: string };
 
@@ -97,14 +98,15 @@ export async function exportReportFile(query: string): Promise<CsvFile> {
   const filters = parseReportFilters(params);
   const report = await reimbursementReport(viewer, filters);
   const csv = toCsv(
-    ["Type", "Date", "Employee", "Business purpose", "Route or month", "Program code", "Claim", "Claim status", "Miles", "Amount"],
+    ["Type", "Date", "Employee", "Business purpose", "Route or month", "District", "School or site", "Claim", "Claim status", "Miles", "Amount"],
     report.lines.map((t) => [
       REQUEST_TYPES[t.type].label,
       t.date,
       t.ownerName,
       t.purpose,
       t.detail,
-      t.programCode ?? "",
+      t.fundName ?? "",
+      t.siteCode ? siteLabel({ code: t.siteCode, name: t.siteName ?? "" }) : "",
       claimNumber(t.claimRef, t.type),
       STATUS_LABEL[t.claimStatus],
       t.miles === null ? "" : t.miles.toFixed(1),

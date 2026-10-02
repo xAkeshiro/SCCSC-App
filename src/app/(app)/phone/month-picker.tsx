@@ -7,6 +7,8 @@ import { Button, Field, Notice, cx } from "@/components/ui";
 import { useFormAction } from "@/components/use-form-action";
 import { formatCents } from "@/lib/money";
 import { formatMonth } from "@/lib/requests/phone";
+import { SiteSelect } from "@/components/site-select";
+import type { SiteGroup } from "@/lib/sites";
 
 export type PickerState = { error?: string };
 
@@ -22,7 +24,7 @@ export type PickableMonth = {
 
 /**
  * Tick the months of a phone bill to claim, add a photo or PDF of the bill, then confirm. Used for
- * a new claim (with the program) and to resubmit a returned one (untick a month to take it out,
+ * a new claim (with the school or site) and to resubmit a returned one (untick a month to take it out,
  * or swap the bill).
  */
 export function PhoneMonthPicker({
@@ -30,17 +32,17 @@ export function PhoneMonthPicker({
   field,
   action,
   submitLabel,
-  programs,
-  defaultProgramId,
+  siteGroups,
+  defaultSiteId,
   existingFiles,
 }: {
   groups: { title: string | null; months: PickableMonth[] }[];
   field: "month" | "item";
   action: (prev: PickerState, formData: FormData) => Promise<PickerState>;
   submitLabel: string;
-  /** New claims only: the program or grant it's charged to. */
-  programs?: { id: string; code: string; name: string }[];
-  defaultProgramId?: string | null;
+  /** New claims only: the school or site it's charged to. */
+  siteGroups?: SiteGroup[];
+  defaultSiteId?: string | null;
   /** Resubmitting: the bill files already on the claim. */
   existingFiles?: ExistingFile[];
 }) {
@@ -59,7 +61,7 @@ export function PhoneMonthPicker({
   useEffect(() => () => previews.current.forEach((p) => p.previewUrl && URL.revokeObjectURL(p.previewUrl)), []);
   const all = groups.flatMap((g) => g.months);
   const [checked, setChecked] = useState<Set<string>>(() => new Set(all.filter((m) => m.checked && !m.unavailable).map((m) => m.value)));
-  const [programId, setProgramId] = useState(defaultProgramId ?? "");
+  const [siteId, setSiteId] = useState(defaultSiteId ?? "");
   const [note, setNote] = useState("");
   const [certified, setCertified] = useState(false);
   const chosen = all.filter((m) => checked.has(m.value));
@@ -116,16 +118,9 @@ export function PhoneMonthPicker({
 
       <div className="card space-y-5 p-5 sm:p-6">
         <BillPicker picked={picked} onPickedChange={setPicked} existing={existingFiles} removed={removed} onRemovedChange={setRemoved} />
-        {programs ? (
-          <Field label="Program or grant" htmlFor="programId" hint="The one your phone use is charged to.">
-            <select id="programId" name="programId" className="field" value={programId} onChange={(e) => setProgramId(e.target.value)}>
-              <option value="">Choose…</option>
-              {programs.map((p) => (
-                <option key={p.id} value={p.id}>
-                  {p.code}: {p.name}
-                </option>
-              ))}
-            </select>
+        {siteGroups ? (
+          <Field label="School or site" htmlFor="siteId" hint="Where you work. Your usual one is filled in.">
+            <SiteSelect id="siteId" name="siteId" groups={siteGroups} value={siteId} onChange={(e) => setSiteId(e.target.value)} />
           </Field>
         ) : null}
         <Field label="Note to your coordinator" htmlFor="note" optional>

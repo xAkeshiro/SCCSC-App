@@ -21,6 +21,7 @@ import { PhoneMonthPicker } from "../../phone/month-picker";
 import { resubmit, withdraw } from "../actions";
 import { ClaimBuilder } from "../claim-builder";
 import { ReviewPanel } from "./review-panel";
+import { siteLabel } from "@/lib/sites";
 
 export const metadata: Metadata = { title: "Claim" };
 
@@ -115,7 +116,7 @@ export default async function ClaimPage({ params, searchParams }: PageProps<"/cl
                       <span className="block font-display text-lg font-medium">{formatMonth(m.month)}</span>
                       <span className="block text-sm text-ink-500">
                         {formatCents(Math.round(Number(m.rateCents)))} a month
-                        {m.programCode ? ` · ${m.programCode}: ${m.programName}` : ""}
+                        {m.siteCode ? ` · ${siteLabel({ code: m.siteCode, name: m.siteName ?? "" })}` : ""}
                       </span>
                     </span>
                     <span className="font-display text-lg font-semibold">{formatCents(m.amountCents)}</span>

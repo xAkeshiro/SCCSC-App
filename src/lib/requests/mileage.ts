@@ -7,17 +7,22 @@ import "server-only";
 import { and, asc, desc, eq, isNull, lte, or } from "drizzle-orm";
 import { z } from "zod";
 import type { Tx } from "@/db";
-import { mileageDetails, programs, rates, requestItems, savedPlaces, type Stop } from "@/db/schema";
+import { mileageDetails, rates, requestItems, savedPlaces, type Stop } from "@/db/schema";
 import { withUser } from "@/db/with-user";
 import type { Viewer } from "@/lib/auth/viewer";
 import { getDistanceProvider } from "@/lib/distance";
 import { UserError } from "@/lib/errors";
 import { todayIso } from "@/lib/format";
-import { mileageAmountCents, normalizeMiles } from "@/lib/money";
+import { dollarsToCents, formatCents, mileageAmountCents, normalizeMiles } from "@/lib/money";
 import { readSettings } from "@/lib/settings";
+import { findActiveSite, siteGroups } from "@/lib/data/sites";
 
 export const REQUEST_TYPE = "mileage";
 export const MAX_STOPS = 8;
+/** Matches the database's limit on parking for one trip. */
+export const MAX_PARKING_CENTS = 50000;
+
+export type CostType = "direct" | "indirect";
 
 // ---------------------------------------------------------------------------------------------
 // Input
@@ -35,11 +40,15 @@ export type TripInput = {
   miles: string;
   overrideReason: string;
   purpose: string;
-  programId: string | null;
+  siteId: string | null;
+  /** "direct" or "indirect" (empty if not chosen). */
+  costType: string;
+  /** Parking paid, in dollars as typed (empty for none). */
+  parking: string;
   notes: string;
 };
 
-export type TripErrors = Partial<Record<"date" | "from" | "to" | "stops" | "miles" | "overrideReason" | "purpose" | "programId" | "form", string>>;
+export type TripErrors = Partial<Record<"date" | "from" | "to" | "stops" | "miles" | "overrideReason" | "purpose" | "siteId" | "costType" | "parking" | "form", string>>;
 
 const str = (v: FormDataEntryValue | null | undefined, max = 500) => (typeof v === "string" ? v.slice(0, max).trim() : "");
 
@@ -63,7 +72,9 @@ export function parseTripForm(formData: FormData): TripInput {
     miles: str(formData.get("miles"), 12),
     overrideReason: str(formData.get("override_reason"), 500),
     purpose: str(formData.get("purpose"), 300),
-    programId: str(formData.get("program_id"), 64) || null,
+    siteId: str(formData.get("site_id"), 64) || null,
+    costType: str(formData.get("cost_type"), 10),
+    parking: str(formData.get("parking"), 12),
     notes: str(formData.get("notes"), 1000),
   };
 }
@@ -106,7 +117,8 @@ function daysBetween(a: string, b: string) {
 export type WorkedTrip = {
   itemDate: string;
   purpose: string;
-  programId: string | null;
+  siteId: string | null;
+  costType: CostType;
   notes: string | null;
   amountCents: number;
   details: Omit<typeof mileageDetails.$inferInsert, "itemId">;
@@ -137,14 +149,18 @@ export async function workOutTrip(tx: Tx, input: TripInput): Promise<{ trip: Wor
 
   if (input.purpose.length < 3) errors.purpose = "Say what the trip was for, like “Parent workshop at Cedar Grove”.";
 
-  if (input.programId) {
-    const [program] = uuid.safeParse(input.programId).success
-      ? await tx.select().from(programs).where(and(eq(programs.id, input.programId), eq(programs.active, true))).limit(1)
-      : [];
-    if (!program) errors.programId = "Choose a program from the list.";
-  } else if (settings.requireProgram) {
-    errors.programId = "Choose the program or grant this trip is for.";
+  if (input.siteId) {
+    if (!(await findActiveSite(tx, input.siteId))) errors.siteId = "Choose a school or site from the list.";
+  } else if (settings.requireSite) {
+    errors.siteId = "Choose the school or site this trip was for.";
   }
+
+  const costType = input.costType === "direct" || input.costType === "indirect" ? input.costType : null;
+  if (!costType) errors.costType = "Choose direct (with students) or indirect (meetings, trainings, materials runs).";
+
+  const parkingCents = dollarsToCents(input.parking);
+  if (parkingCents === null) errors.parking = "Enter the parking amount in dollars, like 6.50.";
+  else if (parkingCents > MAX_PARKING_CENTS) errors.parking = `Parking over ${formatCents(MAX_PARKING_CENTS)} for one trip needs a word with finance first.`;
 
   const route = from && to ? [from, ...stops, to] : null;
   const involvesHome = Boolean(route?.some((p) => p.isHome));
@@ -165,16 +181,18 @@ export async function workOutTrip(tx: Tx, input: TripInput): Promise<{ trip: Wor
   const rate = errors.date ? null : await rateOn(tx, input.date);
   if (!errors.date && !rate) errors.date = "There's no mileage rate for that date yet. Please ask an admin.";
 
-  if (Object.keys(errors).length > 0 || !from || !to || !miles || !rate) return { errors };
+  if (Object.keys(errors).length > 0 || !from || !to || !miles || !rate || !costType || parkingCents === null) return { errors };
 
   const asStop = (p: ResolvedPoint): Stop => ({ label: p.label, address: p.address, placeId: p.placeId, isHome: p.isHome });
   return {
     trip: {
       itemDate: input.date,
       purpose: input.purpose,
-      programId: input.programId,
+      siteId: input.siteId,
+      costType,
       notes: input.notes || null,
-      amountCents: mileageAmountCents(miles, rate.rateCents),
+      // The mileage at the rate, plus any parking.
+      amountCents: mileageAmountCents(miles, rate.rateCents) + parkingCents,
       details: {
         fromPlaceId: from.placeId,
         fromLabel: from.label,
@@ -189,6 +207,7 @@ export async function workOutTrip(tx: Tx, input: TripInput): Promise<{ trip: Wor
         milesEstimated: estimated,
         miles,
         overrideReason: overridden ? input.overrideReason : null,
+        parkingCents,
         rateId: rate.id,
         rateCents: rate.rateCents,
       },
@@ -223,7 +242,7 @@ export async function updateTrip(viewer: Viewer, itemId: string, input: TripInpu
     // RLS only lets the owner update a trip that isn't in a locked claim.
     const [updated] = await tx
       .update(requestItems)
-      .set({ itemDate: item.itemDate, purpose: item.purpose, programId: item.programId, notes: item.notes, amountCents: item.amountCents, updatedAt: new Date() })
+      .set({ itemDate: item.itemDate, purpose: item.purpose, siteId: item.siteId, costType: item.costType, notes: item.notes, amountCents: item.amountCents, updatedAt: new Date() })
       .where(eq(requestItems.id, itemId))
       .returning({ id: requestItems.id, requestId: requestItems.requestId });
     if (!updated) throw new UserError("This trip can't be changed. It may be in a claim that's waiting for approval or already approved.");
@@ -247,26 +266,34 @@ export async function deleteTrip(viewer: Viewer, itemId: string) {
 
 export type FormPlace = { id: string; label: string; address: string; lat: number | null; lng: number | null; isHome: boolean; shared: boolean };
 
-export async function tripFormOptions(viewer: Viewer) {
+/** `includeSiteId`: an existing trip's site, shown even if it has since been hidden. */
+export async function tripFormOptions(viewer: Viewer, includeSiteId?: string | null) {
   return withUser(viewer.userId, async (tx) => {
     const places = await tx
       .select()
       .from(savedPlaces)
       .where(or(isNull(savedPlaces.ownerId), eq(savedPlaces.ownerId, viewer.staffId)))
       .orderBy(asc(savedPlaces.label));
-    const programList = await tx.select().from(programs).where(eq(programs.active, true)).orderBy(asc(programs.code));
     const rateList = await tx.select().from(rates).where(eq(rates.requestType, REQUEST_TYPE)).orderBy(desc(rates.effectiveFrom));
     const settings = await readSettings(tx);
+    // New trips start on whichever of direct or indirect the person picked last time.
+    const [last] = await tx
+      .select({ costType: requestItems.costType })
+      .from(requestItems)
+      .where(and(eq(requestItems.ownerId, viewer.staffId), eq(requestItems.requestType, REQUEST_TYPE)))
+      .orderBy(desc(requestItems.createdAt))
+      .limit(1);
     const officeFirst = (a: FormPlace, b: FormPlace) =>
       Number(b.label === "Main office") - Number(a.label === "Main office") || a.label.localeCompare(b.label);
     return {
       places: places
         .map((p) => ({ id: p.id, label: p.label, address: p.address, lat: p.lat, lng: p.lng, isHome: p.isHome, shared: p.ownerId === null }))
         .sort(officeFirst),
-      programs: programList.map((p) => ({ id: p.id, code: p.code, name: p.name })),
+      siteGroups: await siteGroups(tx, includeSiteId),
       rates: rateList.map((r) => ({ effectiveFrom: r.effectiveFrom, rateCents: r.rateCents })),
       homeTripRule: settings.homeTripRule,
-      requireProgram: settings.requireProgram,
+      requireSite: settings.requireSite,
+      lastCostType: (last?.costType ?? null) as CostType | null,
       today: todayIso(),
     };
   });

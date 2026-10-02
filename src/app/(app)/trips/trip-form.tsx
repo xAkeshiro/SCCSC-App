@@ -6,12 +6,19 @@ import { useId, useMemo, useState } from "react";
 import { useFormAction } from "@/components/use-form-action";
 import { Button, Field, Notice, buttonClass, cx, describedBy } from "@/components/ui";
 import { demoEstimateMiles } from "@/lib/distance";
-import { formatCents, formatRate, mileageAmountCents, normalizeMiles } from "@/lib/money";
+import { SiteSelect } from "@/components/site-select";
+import { dollarsToCents, formatCents, formatRate, mileageAmountCents, normalizeMiles } from "@/lib/money";
 import type { TripErrors } from "@/lib/requests/mileage";
 import type { TripFormOptions } from "@/lib/requests/mileage";
 import type { SaveTripState } from "./actions";
 
 type PointState = { place: string; address: string };
+
+/** In the words of the paper mileage claim form. */
+const COST_TYPES = [
+  { value: "direct", label: "Direct", hint: "Directly involved with students, like buying materials or going to a tournament." },
+  { value: "indirect", label: "Indirect", hint: "Meetings, trainings, or picking up and dropping off materials at the Ping office." },
+] as const;
 type StopState = PointState & { key: number };
 
 export type TripFormValues = {
@@ -23,7 +30,10 @@ export type TripFormValues = {
   miles: string | null;
   overrideReason: string;
   purpose: string;
-  programId: string;
+  siteId: string;
+  costType: "direct" | "indirect" | "";
+  /** Dollars, as typed ("" for none). */
+  parking: string;
   notes: string;
 };
 
@@ -49,7 +59,9 @@ export function TripForm({ options, initial, action, submitLabel, cancelHref, al
   const [milesTouched, setMilesTouched] = useState(initial.miles !== null);
   const [overrideReason, setOverrideReason] = useState(initial.overrideReason);
   const [purpose, setPurpose] = useState(initial.purpose);
-  const [programId, setProgramId] = useState(initial.programId);
+  const [siteId, setSiteId] = useState(initial.siteId);
+  const [costType, setCostType] = useState(initial.costType);
+  const [parking, setParking] = useState(initial.parking);
   const [notes, setNotes] = useState(initial.notes);
 
   const placeById = useMemo(() => new Map(options.places.map((p) => [p.id, p])), [options.places]);
@@ -67,7 +79,9 @@ export function TripForm({ options, initial, action, submitLabel, cancelHref, al
   const involvesHome = points.some((p) => p.place && placeById.get(p.place)?.isHome);
 
   const rate = options.rates.find((r) => r.effectiveFrom <= date) ?? null;
-  const amount = normalized && rate && Number(normalized) > 0 ? mileageAmountCents(normalized, rate.rateCents) : null;
+  const mileageCents = normalized && rate && Number(normalized) > 0 ? mileageAmountCents(normalized, rate.rateCents) : null;
+  const parkingCents = dollarsToCents(parking) ?? 0;
+  const amount = mileageCents === null ? (parkingCents > 0 ? parkingCents : null) : mileageCents + parkingCents;
 
   const addStop = () => setStops((s) => [...s, { key: Date.now(), place: "", address: "" }]);
 
@@ -216,6 +230,32 @@ export function TripForm({ options, initial, action, submitLabel, cancelHref, al
           </Field>
         ) : null}
 
+        <Field
+          label="Parking"
+          htmlFor="parking"
+          optional
+          error={errors.parking}
+          hint="What you paid to park on this trip, if anything."
+        >
+          <div className="relative max-w-36">
+            <span aria-hidden className="pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-ink-500">
+              $
+            </span>
+            <input
+              id="parking"
+              name="parking"
+              inputMode="decimal"
+              className="field pl-7"
+              value={parking}
+              onChange={(e) => setParking(e.target.value.replace(/[^\d.]/g, ""))}
+              placeholder="0.00"
+              {...describedBy("parking", { hint: true, error: errors.parking })}
+            />
+          </div>
+        </Field>
+      </section>
+
+      <section className="card space-y-5 p-5 sm:p-6">
         <Field label="What was the trip for?" htmlFor="purpose" error={errors.purpose} hint="For example: Parent workshop at Cedar Grove">
           <input
             id="purpose"
@@ -228,22 +268,54 @@ export function TripForm({ options, initial, action, submitLabel, cancelHref, al
           />
         </Field>
 
-        <Field label="Program or grant" htmlFor="program_id" error={errors.programId} optional={!options.requireProgram}>
-          <select
-            id="program_id"
-            name="program_id"
-            className="field"
-            value={programId}
-            onChange={(e) => setProgramId(e.target.value)}
-            {...describedBy("program_id", { error: errors.programId })}
-          >
-            <option value="">Choose a program…</option>
-            {options.programs.map((p) => (
-              <option key={p.id} value={p.id}>
-                {p.code}: {p.name}
-              </option>
+        <fieldset aria-describedby={errors.costType ? "cost_type-error" : undefined}>
+          <legend className="field-label">Direct or indirect?</legend>
+          <div className="grid gap-2 sm:grid-cols-2">
+            {COST_TYPES.map((c) => (
+              <label
+                key={c.value}
+                className={cx(
+                  "flex cursor-pointer items-start gap-3 rounded-[var(--radius-btn)] border p-3 transition-colors",
+                  costType === c.value ? "border-brand-600 bg-brand-50/50" : "border-ink-100 hover:bg-surface",
+                )}
+              >
+                <input
+                  type="radio"
+                  name="cost_type"
+                  value={c.value}
+                  checked={costType === c.value}
+                  onChange={() => setCostType(c.value)}
+                  className="mt-0.5 size-5 shrink-0"
+                />
+                <span>
+                  <span className="block font-semibold">{c.label}</span>
+                  <span className="block text-sm text-ink-500">{c.hint}</span>
+                </span>
+              </label>
             ))}
-          </select>
+          </div>
+          {errors.costType ? (
+            <p id="cost_type-error" className="field-error">
+              {errors.costType}
+            </p>
+          ) : null}
+        </fieldset>
+
+        <Field
+          label="School or site"
+          htmlFor="site_id"
+          error={errors.siteId}
+          optional={!options.requireSite}
+          hint="The school or site this trip was for. Your usual one is filled in."
+        >
+          <SiteSelect
+            id="site_id"
+            name="site_id"
+            groups={options.siteGroups}
+            value={siteId}
+            onChange={(e) => setSiteId(e.target.value)}
+            {...describedBy("site_id", { hint: true, error: errors.siteId })}
+          />
         </Field>
 
         <Field label="Notes" htmlFor="notes" optional hint="Anything your coordinator should know.">
@@ -265,6 +337,7 @@ export function TripForm({ options, initial, action, submitLabel, cancelHref, al
           <p className="truncate text-sm text-ink-500">
             {normalized && Number(normalized) > 0 ? `${normalized} mi` : "Miles"}
             {rate ? ` × ${formatRate(rate.rateCents)}` : ""}
+            {parkingCents > 0 ? ` + ${formatCents(parkingCents)} parking` : ""}
           </p>
           <p className="font-display text-2xl font-semibold text-brand-600">{amount !== null ? formatCents(amount) : "$0.00"}</p>
         </div>
