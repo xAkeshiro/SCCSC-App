@@ -14,8 +14,16 @@ Architecture, data model, security model and milestones: @docs/ARCHITECTURE.md
 - Working prototype of the reimbursement tracker: mileage, and phone bills ($45 a month, claimed
   every two months, with a photo or PDF of the bill). Website; the installable app/PWA comes later.
 - Approved by the President, the CFO and the Fiscal Operations Manager, with the green light to
-  build (recorded 2026-10-01). Next: the admin tools (M6), then a walkthrough with the
-  coordinators and program managers.
+  build (recorded 2026-10-01). The admin tools (M6) are done; next is a walkthrough with the
+  coordinators and program managers, then filling in the real staff list (Eden, later).
+- Finance pays through **Aplos** (decided 2026-10-02). Every line has a budget code
+  ACCOUNT-FUND-SCHOOL (e.g. 5430-200-211) from Aplos's own lists, which admins import from the
+  Aplos register import template. A batch becomes one Aplos payment per person, with memo labels
+  `MIL` + last trip date and `CELL` + last day of the phone period (`REIMB` comes later), and
+  downloads as an Aplos register import file. Finance and admin are Eden and the Fiscal
+  Operations Manager.
+- This repo is public: never commit the real Aplos chart of accounts, real staff, or files Eden
+  sends. Demo budget codes are a small sample.
 - Runs on a built-in database (PGlite) with **fake data only** until go-live setup (M7: Supabase
   and real sign-in emails). A maps provider comes after that.
 - Several business rules are still unconfirmed (see "Open questions" in the brief). Do not guess

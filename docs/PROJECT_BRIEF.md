@@ -37,8 +37,8 @@ One internal app, usable as a website or an installed phone app with the same fe
 |---|---|
 | Employee | Logs trips, submits claims, tracks status |
 | Coordinator | Reviews and approves, returns, or denies their team's claims |
-| Finance | Batches approved claims, exports to the financial system, marks paid, runs reports |
-| Admin | Manages users, roles, coordinator assignments, rates, programs, and settings |
+| Finance | Batches approved claims, enters them in Aplos as payments, marks paid, runs reports |
+| Admin | Manages staff, roles, reviewers, rates, budget codes and the open rules |
 
 A person can hold more than one role (for example, a coordinator is also an employee).
 
@@ -50,7 +50,7 @@ left out):
 
 | Group | People | In the app |
 |---|---|---|
-| Finance team | Andrew (CFO), Stef (Fiscal Operations Manager), and for now Eden Redona (Administrative Assistant, who assists them and works on company solutions) | Finance. Eden is also the admin for now. |
+| Finance team | Andrew (CFO), Stef (Fiscal Operations Manager), and for now Eden Redona (Administrative Assistant, who assists them and works on company solutions) | Finance. Eden and Stef are also the admins (2026-10-02). |
 | Coordinators | Sr. Program Manager, Program Managers. Assistant Program Managers aren't included for now. | Coordinator: reviews their team's claims |
 | Team leads | Sr. Team Lead, Team Lead | Still open whether they review claims (open question 5) |
 
@@ -62,7 +62,12 @@ Everyone, at every level, logs their own trips and phone bills as an employee.
 
 - Log trips from a phone right after driving, or in bulk later from a desktop.
 - Trip fields: date, start location, end location, optional extra stops, round trip toggle,
-  business purpose, program or grant code, notes.
+  business purpose, **direct or indirect**, **school or site**, **parking paid**, notes. Direct,
+  indirect, school and parking come from the paper form, `Mileage_Claim_2026.xlsx` (2026-10-02):
+  direct is directly involved with students (buying materials, a tournament); indirect is
+  meetings, trainings, and picking up or dropping off materials at the Ping office.
+- On submitting, the employee also certifies (from the paper form) that they have a valid driver's
+  license and vehicle coverage and obey traffic laws.
 - Miles calculated automatically from the addresses. Allow a manual override with a required reason.
 - Saved places (main office, frequent sites) for fast entry.
 - Group trips into a claim and submit it (mirrors the current spreadsheet, which covers
@@ -80,17 +85,40 @@ Everyone, at every level, logs their own trips and phone bills as an employee.
 ### Finance
 
 - Queue of approved claims.
-- Create a batch for a pay period, export it in the format the financial system imports,
-  and mark the batch paid.
-- Reports by employee, program or grant code, and date range.
+- Create a batch for a pay period, turn it into Aplos payments (see "Budget codes and Aplos"
+  below), and mark the batch paid.
+- Reports by employee, district, school or site, and date range.
 - Printable summary of a claim or batch, for audits and the transition period.
 
 ### Admin
 
-- Manage staff accounts, roles, and which coordinator approves each employee.
-- Manage program and grant codes.
+- Manage staff accounts, roles, and which coordinator approves each employee. Add people one at a
+  time or import the staff list (a Paychex export).
+- Keep the budget codes in step with Aplos (import Aplos's register import template).
 - Manage the mileage rate as effective-dated values (the IRS rate changes periodically).
 - Settings for business rules that are still open (see section 8).
+
+### Budget codes and Aplos (from Eden, 2026-10-02)
+
+SCCSC's accounting system is **Aplos** (answers open question 1). Finance (Eden and Stef) enters
+approved reimbursements in the Aplos bank register as **payments**.
+
+- **Budget codes** are ACCOUNT-FUND-SCHOOL, for example **5430-200-211**: 5430 is the account (what
+  the cost is: Telephone, indirect), 200 is the fund (the school district: Twin Rivers), and 211 is
+  the school in that district (an Aplos "Schools" tag). The lists come from Aplos's register import
+  template, which an admin uploads.
+- Trips go to the mileage account for their direct or indirect choice (5702 direct, 5700 indirect),
+  parking to the parking accounts (5703, 5701), and phone bills to 5430. Admins can change these.
+- **One payment per person** per batch, with a split per budget code. The memo lists a label for
+  each claim, and each split's comment is its label:
+  - `MIL` + the date of the claim's last trip: `MIL062926`.
+  - `CELL` + the last day of the two-month phone period: `CELL083126` is July–August,
+    `CELL103126` is September–October.
+  - `REIMB` for itemized reimbursements (supplies, consumables; direct or indirect). The template
+    comes later.
+  - A person paid for all three gets a memo like `MIL092526, CELL103126, REIMB092826`.
+- The app shows each payment the way Aplos does and downloads them as an Aplos register import
+  (Excel): Date, Note/Memo, Payee, Check #, Account, Fund, Comment, Amount, Tags: Schools.
 
 ### Records
 
@@ -126,7 +154,7 @@ mileage.
   December), so a normal claim covers two months: **$90**. The months per claim is a setting.
 - The employee opens **Phone bill**, checks the months (both are ticked; untick one, for example
   before they started), **adds a photo or PDF of the bill** (required, confirmed 2026-09-30),
-  picks the program, confirms, and sends it. Their coordinator can open the bill, approves it like
+  picks the school or site, confirms, and sends it. Their coordinator can open the bill, approves it like
   a mileage claim, and finance pays it in the same batches.
 - Photos are made smaller on the phone before they're sent (a readable ~2000px JPEG). Up to 5 files
   per claim, 4 MB in all. Only photos (JPG, PNG, WebP, iPhone HEIC) and PDFs are accepted.
@@ -202,7 +230,7 @@ The goal is a central place staff open often, not only a reimbursement portal.
 - `request_items` / trips (belongs to a request; mileage-specific fields or a typed JSON payload)
 - `approvals` and `audit_log` (actor, action, comment, timestamp)
 - `rates` (type, value, effective_from)
-- `programs` (grant or program codes)
+- `funds`, `accounts` and `sites` (budget codes, from Aplos)
 - `batches` (pay period, status, export file, paid date)
 - `saved_places`
 
@@ -220,7 +248,8 @@ This is a starting point for discussion, not a final schema.
 
 ## 8. Open questions (do not guess; ask Eden or make configurable)
 
-1. Which financial system does finance use, and what import format does it accept?
+1. ~~Which financial system does finance use, and what import format does it accept?~~
+   **Decided:** Aplos, through its register import (Excel). See "Budget codes and Aplos".
 2. Will finance and the auditor accept timestamped electronic approvals in place of signatures?
    Do any funders have specific documentation rules?
 3. How should trips that start from home be handled (commute miles are generally not reimbursable)?
@@ -256,8 +285,8 @@ This is a starting point for discussion, not a final schema.
     employee's name and the months claimed, and how long are bill copies kept (see question 8)?
 20. New (phone bills): how late can a missed period be claimed? (A setting: one period back.)
 21. New (phone bills): is the confirmation wording right? ("I confirm I used my own phone for SCCSC
-    work during these months.") And which program should phone bills be charged to? (The
-    employee picks; it starts on their usual program.)
+    work during these months.") And which school or site should phone bills be charged to? (The
+    employee picks; it starts on their usual one.) Are they always 5430 Telephone (Indirect)?
 22. New (Paychex, for later): are reimbursements paid on the paycheck or by a separate check? Which
     Paychex plan does SCCSC have, does it include API access (and at what cost), and who is the
     Paychex Flex Super Admin? Does Paychex hold staff work emails and mobile numbers?
@@ -266,13 +295,22 @@ This is a starting point for discussion, not a final schema.
 24. New (trainings tracker, for later): which trainings and documents are required for which roles,
     who are the Recruitment staff, and what should they be able to see (certificates can be
     personal)?
+25. New (Aplos): when the register import has several rows with the same date, payee and check
+    number, does Aplos make one payment with splits (like the screenshot), or separate payments?
+    Worth a test import of one small batch. And do these payments get check numbers (the download
+    can number them), or are they direct deposits?
+26. New (Aplos): are the account choices right? Mileage direct 5702, indirect 5700; parking direct
+    5703, indirect 5701; phone bills 5430. (Admin → Budget codes can change them.)
+27. New (REIMB, for later): which date goes in the `REIMB` label, the last receipt's date or the
+    day it was submitted?
 
 ## 9. Rollout plan
 
 The prototype is built and approved by the President, the CFO and the Fiscal Operations Manager
 (recorded 2026-10-01).
 
-1. Finish the admin tools (M6), so the app is fully working and set up the way SCCSC runs.
+1. ~~Finish the admin tools (M6), so the app is fully working and set up the way SCCSC runs.~~
+   Done 2026-10-02, with budget codes and Aplos payments. Eden fills in the real staff list.
 2. Walk the coordinators and program managers through it with fake data, and work in their feedback.
 3. Go-live setup (M7): Supabase, sign-in emails from an SCCSC address, the real staff list.
 4. Pilot with one program for a pay cycle or two, keeping paper as a backup.

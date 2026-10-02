@@ -60,32 +60,85 @@ Everything is a **request** (a claim) of a **request type**, made of **request i
   PDFs only, never SVG or HTML). Big photos are shrunk in the browser before upload
   (`src/components/bill-picker.tsx`); an upload stays under 4 MB (Vercel caps a request at 4.5 MB,
   and `serverActions.bodySizeLimit` is set to match). Files are fetched through a server action
-  (like the CSV exports) so, in the demo, they come from the same server as the page.
+  (like the batch downloads) so, in the demo, they come from the same server as the page.
+- **Trips follow the paper mileage voucher** (`Mileage_Claim_2026.xlsx`): each trip says whether
+  it's **direct** (with students) or **indirect** (meetings, trainings, admin), which school or
+  site it's for, and any **parking** paid (part of the trip's amount, stored in
+  `mileage_details.parking_cents`). The printable claim is laid out like the voucher, with indirect
+  and direct miles in separate columns and both signatures recorded electronically.
 - Status flow and approvals (`app.*` functions), history, batching and payment are shared by all
   types.
 - No form builder yet (the brief says to wait until several types exist).
+
+## Budget codes and Aplos
+
+SCCSC's accounting system is **Aplos**. Every reimbursement line is charged to a budget code
+**ACCOUNT-FUND-SCHOOL**, for example `5430-200-211`: account 5430 (Telephone, indirect), fund 200
+(Twin Rivers USD) and school tag 211 (Foothill High School).
+
+- **The lists come from Aplos** (`src/lib/budget-codes.ts`, `src/lib/data/budget-codes.ts`). An
+  admin uploads Aplos's register import template; its Accounts, Funds and "Tags - Schools" tabs fill
+  `accounts` (expense accounts), `funds` and `sites` (school tags, grouped by fund). Re-importing
+  adds and renames, never deletes, and keeps schools an admin has hidden from staff. Excel files
+  are read and written by a small built-in reader (`src/lib/xlsx.ts`), with no library.
+- **Staff pick the school or site** on each trip and phone bill (their usual one is filled in);
+  the fund comes with the school. **The account** comes from the trip's direct or indirect choice,
+  through the account choices on Admin → Budget codes (setting `aplos_accounts`: mileage direct
+  5702, indirect 5700, parking direct 5703, indirect 5701, phone bills 5430).
+- **Payments** (`src/lib/requests/aplos.ts`): finance enters approved reimbursements in the Aplos
+  bank register as payments. Each batch becomes **one payment per person**, split by budget code.
+  Each claim has a label, used as the split's comment and listed in the payment's memo: `MIL` and
+  the date of the claim's last trip (`MIL092526`), `CELL` and the last day of the phone bill period
+  (`CELL103126` for September–October). Itemized reimbursements will be `REIMB`. The payee is the
+  person's "name in Aplos" if set, otherwise their name.
+- The batch page previews the payments the way Aplos shows them and flags lines that can't go in
+  as they are (no school, an account that isn't in the imported list). **Aplos payments (Excel)**
+  downloads them in the column order of the Aplos register import (Date, Note/Memo, Payee, Check #,
+  Account, Fund, Comment, Amount, Tags: Schools), one row per split, amounts negative, using
+  Aplos's own names for accounts, funds and tags. The trip detail CSV stays for records.
+
+## Admin tools
+
+Admin → Access requests, Staff, Budget codes, Rates and rules, History.
+
+- **Staff** (`src/lib/data/staff.ts`): add or edit a person (name, name in Aplos, email, mobile,
+  roles, reviewer, usual school, active). Someone added here signs in straight away. Saving stops
+  an admin removing their own Admin role or making themselves inactive, keeps emails and numbers
+  unique, and only lets an active coordinator be a reviewer (RLS still limits all of it to admins). A coordinator's
+  team has to be moved to someone else (one form) before they stop reviewing or leave.
+- **Import a staff list** (`src/lib/roster.ts`, `src/lib/data/roster.ts`): a CSV or Excel export
+  (from Paychex or anything else). Columns are found by their headings. The preview shows who's
+  new, who gets a missing email or number, who's already there, which rows can't be used and who
+  isn't in the file. Importing adds the new people as employees and fills in missing contacts;
+  it never renames anyone, replaces a contact, or removes anyone.
+- **Rates and rules** (`src/lib/rules.ts`, `src/lib/data/rates.ts`): add an effective-dated rate
+  (delete one only before it starts), and edit the rules that are still open questions.
+- **History**: every claim step (filter by person, action and dates) and every admin change.
 
 ## Data model
 
 | Table | What it holds |
 |---|---|
-| `staff` | A staff member: name, active/inactive, coordinator, default program. `user_id` links their sign-in account once they have signed in. |
+| `staff` | A staff member: name, active/inactive, coordinator, usual school or site, name in Aplos. `user_id` links their sign-in account once they have signed in. |
 | `staff_private` | Email and phone number (E.164), used to match sign-ins to the roster. Admins only. |
 | `staff_roles` | employee, coordinator, finance, admin. A person can hold several. |
 | `staff_state` | Per-person state they may change themselves (when they last read their updates). |
 | `access_requests` | People who verified an email or phone but didn't match the roster, waiting for an admin. |
-| `programs` | Program or grant codes trips are charged to. |
+| `funds` | Aplos funds: the Center (1) and the school districts (100, 200, …). |
+| `accounts` | Aplos expense accounts (5702 Local Travel - auto (Direct), …), with their parent account. Finance and admin only. |
+| `sites` | Aplos school tags (211 Foothill High School, …), each in a fund. Admins can hide one from staff. Was `programs` before migration 0007. |
 | `request_types` | `mileage` and `phone` (more later). |
 | `rates` | Effective-dated rates in cents per unit (`numeric`, so 72.5¢ is exact). |
 | `settings` | Business rules still being decided (home trips, bulk approval limit, session length). |
 | `saved_places` | Shared places (office, school sites) and personal ones (Home). |
 | `requests` | A claim: owner, status, total (kept by trigger), submitted/decided times, batch. |
-| `request_items` | A trip: date, purpose, program, notes, amount in cents. `request_id` is empty until it is submitted. |
-| `mileage_details` | Trip route (from, stops, to), round trip, estimated and claimed miles, override reason, and the **rate it was calculated with**. |
+| `request_items` | A trip or phone bill month: date, purpose, school or site, direct or indirect, notes, amount in cents. `request_id` is empty until it is submitted. |
+| `mileage_details` | Trip route (from, stops, to), round trip, estimated and claimed miles, override reason, parking, and the **rate it was calculated with**. |
 | `phone_details` | The month a phone bill item pays for and the rate used. One per person and month. |
 | `request_attachments` | Files sent with a claim (a photo or PDF of a phone bill): name, type, size and the bytes. Stored in Postgres for now. |
 | `request_events` | The history: who did what, when, from which status to which, and their comment. Append-only. |
 | `batches` | A pay-period batch: claims, total, exported and paid dates. |
+| `admin_events` | Changes made in the admin tools: who, what (in words), when, and the person it was about. Append-only, admins only. |
 | `trip_view` (view) | Trips with their details, with home addresses hidden from anyone but the owner. |
 
 Money is integer cents everywhere. Each trip stores its own rate and rounded amount, so a later rate
@@ -116,7 +169,10 @@ Who sees what:
   without a coordinator are reviewed by an admin.
 - **Locks.** Trips can change only while unsubmitted or while their claim is a draft or returned.
   RLS hides locked trips from edits, and a trigger stops even owner-level code.
-- **History is append-only.** A trigger rejects any update or delete on `request_events`.
+- **History is append-only.** A trigger rejects any update or delete on `request_events`, and on
+  `admin_events`, which is written only through `app.log_admin` (admins only; it records who).
+- **Budget codes**: funds and schools are readable by all staff (for the pickers), accounts by
+  finance and admin. Only admins change them.
 - **Files** have exactly the claim's visibility (a phone bill can show personal details). The owner
   adds them while the claim is a draft or returned, or in the same transaction that sends it
   (`app.submitted_in_this_transaction`); after that they're locked like the trips.
@@ -170,7 +226,9 @@ replace it, with results cached.
 | M4 | Coordinator review: approve, return, deny, bulk approve | done |
 | M5 | Finance: batches, CSV export, mark paid, printable batch, simple report | done |
 | M5b | Phone bill reimbursement (the second request type), renamed "reimbursement tracker" | done |
-| M6 | Admin: roster import, roles and coordinators, rates, programs, settings, audit view. Then a walkthrough with the coordinators and program managers | next |
+| M5c | Budget codes from Aplos, trips like the paper voucher (direct/indirect, parking, school), Aplos payments | done |
+| M6 | Admin: staff list and import, roles and reviewers, rates, rules, history | done |
+| | Walkthrough with the coordinators and program managers; Eden fills in the real staff list | next |
 | M7 | Supabase + real sign-in emails (texts if approved) | later |
 | M8 | Maps provider and notifications | later |
 | M9 | Installable app (PWA), offline trip drafts | later |
@@ -190,6 +248,6 @@ replace it, with results cached.
    verified) and, if texts are approved, Phone sign-in with an SMS provider. Swap the demo code
    providers in `src/lib/auth/` for Supabase's `signInWithOtp` / `verifyOtp`, and add the second
    email or phone to a person's account through Supabase's admin API.
-4. Import the real roster through the admin screen (M6), never the seed.
+4. Import the real staff list and the Aplos template through the admin screens, never the seed.
 5. Decide where bill files live: keep them in Postgres (fine while they're small and few), or move
    them to a private Supabase Storage bucket with the same visibility rules.

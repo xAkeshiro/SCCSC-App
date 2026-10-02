@@ -26,8 +26,9 @@ pick a made-up person from the **Demo** dropdown and press **Explore** to skip t
 
 1. **Rowan Ellery (employee).** The home page shows what's not submitted, waiting, approved
    and paid. Press **Log a trip**: pick Main office to Cedar Grove, tick Round trip, and the
-   miles and amount fill in. Change the miles and it asks why. Then **Submit trips**: tick the
-   trips, confirm, submit.
+   miles and amount fill in. Change the miles and it asks why. Choose direct or indirect, add any
+   parking, and check the school (his usual one is filled in). Then **Submit trips**: tick the
+   trips, confirm, submit. **Print** on a claim shows it laid out like the paper mileage voucher.
 2. **Lena Fairbanks (coordinator).** **Review** lists her team's claims, oldest first. Open
    Rowan's claim: check the trips, then approve, or return it with a comment. Small claims with
    nothing flagged can be ticked and approved together.
@@ -36,10 +37,15 @@ pick a made-up person from the **Demo** dropdown and press **Explore** to skip t
    press **Claim $90.00**, add a photo or PDF of the bill, confirm, and send it. It goes to Lena
    like a mileage claim, and she can open the bill before approving.
 4. **Hazel Brightwater (finance).** **Finance** lists approved claims. Create a batch for the pay
-   period, download the CSV for the financial system, then mark it paid. **Reports** totals trips
-   by employee and program for any dates. Everything has a printable version.
+   period. **Payments for Aplos** shows one payment per person, split by budget code
+   (5702-200-211), with `MIL` and `CELL` labels in the memo. Download **Aplos payments (Excel)**
+   for the Aplos register import, then mark the batch paid. **Reports** totals trips and phone
+   bills by employee, district and school for any dates. Everything has a printable version.
 5. **Sam Whitlock (admin).** **Admin** shows Nora Pennington waiting for access. She verified her
-   email but isn't on the staff list. Approve her with a role and a coordinator.
+   email but isn't on the staff list. Approve her with a role and a coordinator. **Staff** adds,
+   edits or imports people (try `tests/fixtures/staff-list-sample.csv`); **Budget codes** updates
+   from the Aplos template and sets which account each kind of line goes to; **Rates and rules**
+   and **History** do what they say.
 6. **The real sign-in.** Sign out, then sign in as **Felix Hartwell, felix.hartwell@example.org**
    (or as yourself, **Eden Redona, eden.redona@sccsc.org**: you're on the staff list as an admin).
    He's on the staff list but has never signed in. The code appears on screen (no email is sent in
@@ -150,7 +156,7 @@ src/
   lib/
     auth/                  sessions, sign-in codes, roster matching, the signed-in viewer
     data/                  queries and actions per area (claims, trips, review, finance, admin)
-    requests/              request types (mileage, phone bill periods), statuses, CSV export layouts
+    requests/              request types (mileage, phone bill periods), statuses, Aplos payments, exports
     distance/              miles between places (demo estimate until a maps service is chosen)
 drizzle/                   migrations (0001_security.sql: RLS, audited transitions, locks)
 tests/                     unit and database tests (Vitest)
@@ -161,6 +167,6 @@ assets/brand/              logo mark and full logo (copies served from public/br
 
 ## What's next
 
-Admin screens (roster import, roles and coordinators, rates, programs, settings), then Supabase
-with real sign-in emails, a maps service for miles, notifications, and the
-installable app. See the milestones in [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
+A walkthrough with the coordinators and program managers, then the real staff list, then Supabase
+with real sign-in emails, a maps service for miles, notifications, and the installable app. See the
+milestones in [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
