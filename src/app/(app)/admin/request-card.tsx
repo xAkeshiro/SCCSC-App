@@ -6,6 +6,7 @@ import { useFormAction } from "@/components/use-form-action";
 import { Button, Field, Notice } from "@/components/ui";
 import { approveRequest, rejectRequest, type ReviewState } from "./actions";
 import { SiteSelect } from "@/components/site-select";
+import { ROLE_INFO } from "@/lib/roles";
 import type { SiteGroup } from "@/lib/sites";
 
 type Props = {
@@ -22,12 +23,6 @@ type Props = {
   siteGroups: SiteGroup[];
 };
 
-const ROLES = [
-  { value: "employee", label: "Employee", hint: "Logs trips and submits claims" },
-  { value: "coordinator", label: "Coordinator", hint: "Approves their team's claims" },
-  { value: "finance", label: "Finance", hint: "Batches, exports and pays claims" },
-  { value: "admin", label: "Admin", hint: "Manages people and settings" },
-];
 
 export function AccessRequestCard({ request, coordinators, siteGroups }: Props) {
   const [mode, setMode] = useState<"idle" | "approve" | "reject">("idle");
@@ -78,9 +73,9 @@ export function AccessRequestCard({ request, coordinators, siteGroups }: Props) 
           <fieldset className="sm:col-span-2">
             <legend className="field-label">Roles</legend>
             <div className="grid gap-2 sm:grid-cols-2">
-              {ROLES.map((r) => (
+              {ROLE_INFO.map((r) => (
                 <label key={r.value} className="flex min-h-12 items-start gap-3 rounded-[var(--radius-btn)] border border-ink-100 p-3 hover:bg-surface">
-                  <input type="checkbox" name="roles" value={r.value} defaultChecked={r.value === "employee"} className="mt-1 size-5" />
+                  <input type="checkbox" name="roles" value={r.value} defaultChecked={r.value === "employee"} className="mt-1 size-5 shrink-0" />
                   <span>
                     <span className="block font-semibold">{r.label}</span>
                     <span className="block text-sm text-ink-500">{r.hint}</span>

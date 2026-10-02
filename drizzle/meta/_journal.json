@@ -71,6 +71,20 @@
       "when": 1790980117434,
       "tag": "0009_budget_security",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1790982289321,
+      "tag": "0010_admin_events",
+      "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1790982300065,
+      "tag": "0011_admin_security",
+      "breakpoints": true
     }
   ]
 }

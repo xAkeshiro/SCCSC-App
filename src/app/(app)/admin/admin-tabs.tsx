@@ -6,7 +6,10 @@ import { cx } from "@/components/ui";
 
 const TABS = [
   { href: "/admin", label: "Access requests" },
+  { href: "/admin/staff", label: "Staff" },
   { href: "/admin/budget-codes", label: "Budget codes" },
+  { href: "/admin/rates", label: "Rates and rules" },
+  { href: "/admin/history", label: "History" },
 ];
 
 /** The admin sections. Scrolls sideways on a phone instead of wrapping. */

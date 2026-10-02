@@ -4,6 +4,7 @@ import { FileSpreadsheet, Upload } from "lucide-react";
 import { useState } from "react";
 import { Button, Field, Notice } from "@/components/ui";
 import { useFormAction } from "@/components/use-form-action";
+import { ACCOUNT_MAPPING_LABELS } from "@/lib/budget-codes";
 import type { AccountMapping } from "@/lib/settings";
 import { importFromAplos, saveMapping, type ImportState, type MappingState } from "./actions";
 
@@ -51,11 +52,11 @@ export function ImportForm() {
 type AccountOption = { number: string; name: string; parentNumber: string | null };
 
 const LINES: { key: keyof AccountMapping; label: string; hint: string }[] = [
-  { key: "mileageDirect", label: "Mileage, direct", hint: "Trips directly involved with students." },
-  { key: "mileageIndirect", label: "Mileage, indirect", hint: "Meetings, trainings, materials runs." },
-  { key: "parkingDirect", label: "Parking, direct", hint: "Parking on a direct trip." },
-  { key: "parkingIndirect", label: "Parking, indirect", hint: "Parking on an indirect trip." },
-  { key: "phone", label: "Phone bills", hint: "The $45 a month for using a personal phone." },
+  { key: "mileageDirect", label: ACCOUNT_MAPPING_LABELS.mileageDirect, hint: "Trips directly involved with students." },
+  { key: "mileageIndirect", label: ACCOUNT_MAPPING_LABELS.mileageIndirect, hint: "Meetings, trainings, materials runs." },
+  { key: "parkingDirect", label: ACCOUNT_MAPPING_LABELS.parkingDirect, hint: "Parking on a direct trip." },
+  { key: "parkingIndirect", label: ACCOUNT_MAPPING_LABELS.parkingIndirect, hint: "Parking on an indirect trip." },
+  { key: "phone", label: ACCOUNT_MAPPING_LABELS.phone, hint: "The $45 a month for using a personal phone." },
 ];
 
 export function MappingForm({ mapping, accounts, exampleFund, exampleSite }: { mapping: AccountMapping; accounts: AccountOption[]; exampleFund: string; exampleSite: string }) {

@@ -108,3 +108,12 @@ export function parseAplosTemplate(sheets: ReadSheet[]): AplosLists {
   }
   return { funds, accounts, sites, warnings };
 }
+
+/** What each account choice is for (see AccountMapping in settings.ts). */
+export const ACCOUNT_MAPPING_LABELS: Record<"mileageDirect" | "mileageIndirect" | "parkingDirect" | "parkingIndirect" | "phone", string> = {
+  mileageDirect: "Mileage, direct",
+  mileageIndirect: "Mileage, indirect",
+  parkingDirect: "Parking, direct",
+  parkingIndirect: "Parking, indirect",
+  phone: "Phone bills",
+};

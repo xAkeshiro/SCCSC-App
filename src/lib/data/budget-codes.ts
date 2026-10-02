@@ -11,10 +11,12 @@ import type { Tx } from "@/db";
 import { accounts, funds, requestItems, settings, sites, staff } from "@/db/schema";
 import { withUser } from "@/db/with-user";
 import type { Viewer } from "@/lib/auth/viewer";
-import { AplosFileError, parseAplosTemplate } from "@/lib/budget-codes";
+import { ACCOUNT_MAPPING_LABELS, AplosFileError, parseAplosTemplate } from "@/lib/budget-codes";
 import { UserError } from "@/lib/errors";
 import { readSettings, type AccountMapping } from "@/lib/settings";
+import { siteLabel } from "@/lib/sites";
 import { XlsxError, readXlsx } from "@/lib/xlsx";
+import { logAdmin } from "./admin-log";
 
 export async function budgetCodesOverview(viewer: Viewer) {
   return withUser(viewer.userId, async (tx) => {
@@ -101,13 +103,20 @@ export async function importAplosListsTx(tx: Tx, bytes: Uint8Array): Promise<Imp
     });
 
   const inFile = new Set(lists.sites.map((s) => s.code));
-  return {
+  const summary: ImportSummary = {
     funds: count(lists.funds, (f) => f.code, before.funds),
     accounts: count(lists.accounts, (a) => a.number, before.accounts),
     sites: count(lists.sites, (s) => s.code, before.sites),
     notInFile: [...before.sites].filter((c) => !inFile.has(c)).length,
     warnings: lists.warnings,
   };
+  const n = (c: { added: number; updated: number }) => `${c.added} new, ${c.updated} updated`;
+  await logAdmin(
+    tx,
+    "budget_codes",
+    `Imported from Aplos: funds ${n(summary.funds)}; accounts ${n(summary.accounts)}; schools and sites ${n(summary.sites)}`,
+  );
+  return summary;
 }
 
 const accountNumber = z.string().regex(/^\d{1,8}$/);
@@ -124,7 +133,11 @@ export async function saveAccountMappingTx(tx: Tx, staffId: string, mapping: Acc
   const known = new Set((await tx.select({ number: accounts.number }).from(accounts)).map((a) => a.number));
   const missing = Object.values(mapping).find((n) => !known.has(n));
   if (missing) throw new UserError(`Account ${missing} isn't in the imported list.`);
+  const before = (await readSettings(tx)).aplosAccounts;
+  const changed = (Object.keys(mapping) as (keyof AccountMapping)[]).filter((k) => before[k] !== mapping[k]);
+  if (changed.length === 0) return;
   await setSetting(tx, staffId, "aplos_accounts", mapping);
+  await logAdmin(tx, "budget_codes", `Accounts: ${changed.map((k) => `${ACCOUNT_MAPPING_LABELS[k]} ${before[k]} → ${mapping[k]}`).join("; ")}`);
 }
 
 /** Saves a setting (RLS: admins only). */
@@ -141,13 +154,17 @@ export async function setSetting(tx: Tx, staffId: string, key: string, value: un
 export async function setSiteActive(viewer: Viewer, siteId: string, active: boolean) {
   if (!z.string().uuid().safeParse(siteId).success) throw new UserError("School or site not found.");
   await withUser(viewer.userId, async (tx) => {
-    const [done] = await tx.update(sites).set({ active }).where(eq(sites.id, siteId)).returning({ id: sites.id });
+    const [done] = await tx.update(sites).set({ active }).where(eq(sites.id, siteId)).returning({ code: sites.code, name: sites.name });
     if (!done) throw new UserError("School or site not found.");
+    await logAdmin(tx, "budget_codes", `${active ? "Showed" : "Hid"} ${siteLabel(done)} ${active ? "to" : "from"} staff`);
   });
 }
 
 /** Shows or hides every tag in a fund at once. */
 export async function setFundSitesActive(viewer: Viewer, fundCode: string, active: boolean) {
   if (!/^\d{1,8}$/.test(fundCode)) throw new UserError("Fund not found.");
-  await withUser(viewer.userId, (tx) => tx.update(sites).set({ active }).where(eq(sites.fundCode, fundCode)));
+  await withUser(viewer.userId, async (tx) => {
+    const changed = await tx.update(sites).set({ active }).where(eq(sites.fundCode, fundCode)).returning({ id: sites.id });
+    await logAdmin(tx, "budget_codes", `${active ? "Showed" : "Hid"} all ${changed.length} schools and sites in fund ${fundCode} ${active ? "to" : "from"} staff`);
+  });
 }

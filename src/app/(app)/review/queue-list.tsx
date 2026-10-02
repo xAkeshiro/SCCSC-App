@@ -68,7 +68,7 @@ export function QueueList({ items, bulkLimitText }: { items: QueueItem[]; bulkLi
                   value={c.id}
                   checked={picked.has(c.id)}
                   onChange={() => toggle(c.id)}
-                  className="mt-1 size-5"
+                  className="mt-1 size-5 shrink-0"
                   aria-label={`Select ${c.ownerName}'s claim ${claimNumber(c.ref, c.type)} to approve`}
                 />
               </label>

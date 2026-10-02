@@ -63,6 +63,8 @@ export const requestAction = pgEnum("request_action", [
   "paid",
 ]);
 export const batchStatus = pgEnum("batch_status", ["open", "exported", "paid"]);
+/** What part of the admin tools a change was made in, for the admin history. */
+export const adminArea = pgEnum("admin_area", ["staff", "access", "rates", "rules", "budget_codes"]);
 /** Whether a cost is direct (with students) or indirect (meetings, trainings, admin). Picks the account. */
 export const costType = pgEnum("cost_type", ["direct", "indirect"]);
 
@@ -479,6 +481,27 @@ export const requestEvents = pgTable(
     createdAt: createdAt(),
   },
   (t) => [index("request_events_request_idx").on(t.requestId, t.createdAt)],
+);
+
+/**
+ * Changes made in the admin tools (people and roles, access requests, rates, rules, budget codes),
+ * for the record. Append-only, and written only through app.log_admin, which fills in who did it.
+ */
+export const adminEvents = pgTable(
+  "admin_events",
+  {
+    id: bigint("id", { mode: "number" }).generatedAlwaysAsIdentity().primaryKey(),
+    actorId: uuid("actor_id").references(() => staff.id, { onDelete: "set null" }),
+    /** The admin's name at the time. */
+    actorName: text("actor_name").notNull(),
+    area: adminArea("area").notNull(),
+    /** What changed, in plain words: "Roles: added Finance". */
+    summary: text("summary").notNull(),
+    /** The person the change was about, if any. */
+    staffId: uuid("staff_id").references(() => staff.id, { onDelete: "set null" }),
+    createdAt: createdAt(),
+  },
+  (t) => [index("admin_events_created_idx").on(t.createdAt), index("admin_events_staff_idx").on(t.staffId)],
 );
 
 // ---------------------------------------------------------------------------------------------

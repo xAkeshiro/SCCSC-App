@@ -6,9 +6,12 @@ import { withUser } from "@/db/with-user";
 import type { Role, Viewer } from "@/lib/auth/viewer";
 import { UserError } from "@/lib/errors";
 import { cleanName } from "@/lib/names";
+import { ROLE_LABEL } from "@/lib/roles";
+import { ALL_ROLES } from "@/lib/staff";
+import { logAdmin } from "./admin-log";
 import { findActiveSite, siteGroups } from "./sites";
 
-export const ALL_ROLES: Role[] = ["employee", "coordinator", "finance", "admin"];
+export { ALL_ROLES };
 
 export async function adminOverview(viewer: Viewer) {
   return withUser(viewer.userId, async (tx) => {
@@ -104,6 +107,8 @@ export async function approveAccessRequest(viewer: Viewer, input: ApproveInput) 
       .update(accessRequests)
       .set({ status: "approved", reviewedBy: viewer.staffId, reviewedAt: new Date(), matchedStaffId: sameContact?.staffId ?? null })
       .where(eq(accessRequests.id, req.id));
+    const [person] = await tx.select({ fullName: staff.fullName }).from(staff).where(eq(staff.id, staffId)).limit(1);
+    await logAdmin(tx, "access", `Approved ${person?.fullName ?? req.fullName}'s access request (${input.roles.map((r) => ROLE_LABEL[r]).join(", ")})`, staffId);
     return staffId;
   });
 }
@@ -114,8 +119,9 @@ export async function rejectAccessRequest(viewer: Viewer, requestId: string, not
       .update(accessRequests)
       .set({ status: "rejected", reviewedBy: viewer.staffId, reviewedAt: new Date(), reviewNote: note })
       .where(and(eq(accessRequests.id, requestId), eq(accessRequests.status, "pending")))
-      .returning({ id: accessRequests.id });
+      .returning({ fullName: accessRequests.fullName });
     if (!done) throw new UserError("This request was already handled.");
+    await logAdmin(tx, "access", `Turned down ${done.fullName}'s access request: ${note}`);
   });
 }
 
