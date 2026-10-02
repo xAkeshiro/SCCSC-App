@@ -3,16 +3,19 @@ import "server-only";
 import { and, asc, desc, eq, inArray, sql } from "drizzle-orm";
 import { alias } from "drizzle-orm/pg-core";
 import { z } from "zod";
-import { batches, requestEvents, requests, staff } from "@/db/schema";
+import { accounts, batches, funds, requestEvents, requests, sites, staff } from "@/db/schema";
+import type { Tx } from "@/db";
 import { rows, uuidArray, withUser } from "@/db/with-user";
 import type { Viewer } from "@/lib/auth/viewer";
 import { UserError } from "@/lib/errors";
 import type { RequestStatus } from "@/lib/requests/status";
+import { buildPayments, type AplosNames } from "@/lib/requests/aplos";
 import { formatMonth } from "@/lib/requests/phone";
 import { asRequestType, type RequestType } from "@/lib/requests/types";
 import { phoneMonthsForRequests } from "./phone";
 import { siteGroups } from "./sites";
 import { tripsForRequests } from "./trips";
+import { readSettings } from "@/lib/settings";
 import { siteLabel } from "@/lib/sites";
 
 const isUuid = (id: string) => z.string().uuid().safeParse(id).success;
@@ -112,94 +115,127 @@ export async function financeOverview(viewer: Viewer) {
 
 export async function batchDetail(viewer: Viewer, id: string) {
   if (!isUuid(id)) return null;
-  return withUser(viewer.userId, async (tx) => {
-    const creator = alias(staff, "creator");
-    const exporter = alias(staff, "exporter");
-    const payer = alias(staff, "payer");
-    const [batch] = await tx
-      .select({
-        id: batches.id,
-        ref: batches.ref,
-        periodStart: batches.periodStart,
-        periodEnd: batches.periodEnd,
-        status: batches.status,
-        totalCents: batches.totalCents,
-        note: batches.note,
-        createdAt: batches.createdAt,
-        createdBy: creator.fullName,
-        exportedAt: batches.exportedAt,
-        exportedBy: exporter.fullName,
-        paidOn: batches.paidOn,
-        paidBy: payer.fullName,
-      })
-      .from(batches)
-      .leftJoin(creator, eq(creator.id, batches.createdBy))
-      .leftJoin(exporter, eq(exporter.id, batches.exportedBy))
-      .leftJoin(payer, eq(payer.id, batches.paidBy))
-      .where(eq(batches.id, id))
-      .limit(1);
-    if (!batch) return null;
-    const claims = await tx
-      .select({
-        id: requests.id,
-        ref: requests.ref,
-        requestType: requests.requestType,
-        status: requests.status,
-        totalCents: requests.totalCents,
-        ownerName: staff.fullName,
-      })
-      .from(requests)
-      .innerJoin(staff, eq(staff.id, requests.ownerId))
-      .where(eq(requests.batchId, id))
-      .orderBy(asc(staff.fullName), asc(requests.ref));
-    const trips = await tripsForRequests(tx, claims.map((c) => c.id));
-    const phoneMonths = await phoneMonthsForRequests(tx, claims.map((c) => c.id));
-    const approvals = claims.length
-      ? await tx
-          .select({ requestId: requestEvents.requestId, actorName: requestEvents.actorName, createdAt: requestEvents.createdAt })
-          .from(requestEvents)
-          .where(and(inArray(requestEvents.requestId, claims.map((c) => c.id)), eq(requestEvents.action, "approved")))
-          .orderBy(desc(requestEvents.createdAt))
-      : [];
+  return withUser(viewer.userId, (tx) => batchDetailTx(tx, id));
+}
 
-    const bySite = new Map<string, { code: string; name: string; fundCode: string | null; miles: number; cents: number; trips: number; months: number }>();
-    const siteRow = (code: string | null, name: string | null, fundCode: string | null) => {
-      const key = code ?? "none";
-      const row = bySite.get(key) ?? { code: code ?? "None", name: name ?? "No school or site", fundCode, miles: 0, cents: 0, trips: 0, months: 0 };
-      bySite.set(key, row);
-      return row;
-    };
-    for (const t of trips) {
-      const row = siteRow(t.siteCode, t.siteName, t.fundCode);
-      row.miles += Number(t.miles);
-      row.cents += t.amountCents;
-      row.trips += 1;
-    }
-    for (const m of phoneMonths) {
-      const row = siteRow(m.siteCode, m.siteName, m.fundCode);
-      row.cents += m.amountCents;
-      row.months += 1;
-    }
+/** A batch with its claims, totals by school or site, and its payments for Aplos. */
+export async function batchDetailTx(tx: Tx, id: string) {
+  const creator = alias(staff, "creator");
+  const exporter = alias(staff, "exporter");
+  const payer = alias(staff, "payer");
+  const [batch] = await tx
+    .select({
+      id: batches.id,
+      ref: batches.ref,
+      periodStart: batches.periodStart,
+      periodEnd: batches.periodEnd,
+      status: batches.status,
+      totalCents: batches.totalCents,
+      note: batches.note,
+      createdAt: batches.createdAt,
+      createdBy: creator.fullName,
+      exportedAt: batches.exportedAt,
+      exportedBy: exporter.fullName,
+      paidOn: batches.paidOn,
+      paidBy: payer.fullName,
+    })
+    .from(batches)
+    .leftJoin(creator, eq(creator.id, batches.createdBy))
+    .leftJoin(exporter, eq(exporter.id, batches.exportedBy))
+    .leftJoin(payer, eq(payer.id, batches.paidBy))
+    .where(eq(batches.id, id))
+    .limit(1);
+  if (!batch) return null;
+  const claims = await tx
+    .select({
+      id: requests.id,
+      ref: requests.ref,
+      requestType: requests.requestType,
+      status: requests.status,
+      totalCents: requests.totalCents,
+      ownerId: requests.ownerId,
+      ownerName: staff.fullName,
+      aplosName: staff.aplosName,
+    })
+    .from(requests)
+    .innerJoin(staff, eq(staff.id, requests.ownerId))
+    .where(eq(requests.batchId, id))
+    .orderBy(asc(staff.fullName), asc(requests.ref));
+  const trips = await tripsForRequests(tx, claims.map((c) => c.id));
+  const phoneMonths = await phoneMonthsForRequests(tx, claims.map((c) => c.id));
+  const approvals = claims.length
+    ? await tx
+        .select({ requestId: requestEvents.requestId, actorName: requestEvents.actorName, createdAt: requestEvents.createdAt })
+        .from(requestEvents)
+        .where(and(inArray(requestEvents.requestId, claims.map((c) => c.id)), eq(requestEvents.action, "approved")))
+        .orderBy(desc(requestEvents.createdAt))
+    : [];
 
-    return {
-      ...batch,
-      claims: claims.map((c) => {
-        const approval = approvals.find((a) => a.requestId === c.id);
-        const ts = trips.filter((t) => t.requestId === c.id);
-        return {
-          ...c,
-          type: asRequestType(c.requestType),
-          status: c.status as RequestStatus,
-          trips: ts,
-          phoneMonths: phoneMonths.filter((m) => m.requestId === c.id),
-          miles: ts.reduce((n, t) => n + Number(t.miles), 0),
-          approvedBy: approval?.actorName ?? null,
-          approvedAt: approval?.createdAt ?? null,
-        };
-      }),
-      bySite: [...bySite.values()].sort((a, b) => (Number(a.fundCode) || 0) - (Number(b.fundCode) || 0) || a.name.localeCompare(b.name)),
-    };
-  });
+  const bySite = new Map<string, { code: string; name: string; fundCode: string | null; miles: number; cents: number; trips: number; months: number }>();
+  const siteRow = (code: string | null, name: string | null, fundCode: string | null) => {
+    const key = code ?? "none";
+    const row = bySite.get(key) ?? { code: code ?? "None", name: name ?? "No school or site", fundCode, miles: 0, cents: 0, trips: 0, months: 0 };
+    bySite.set(key, row);
+    return row;
+  };
+  for (const t of trips) {
+    const row = siteRow(t.siteCode, t.siteName, t.fundCode);
+    row.miles += Number(t.miles);
+    row.cents += t.amountCents;
+    row.trips += 1;
+  }
+  for (const m of phoneMonths) {
+    const row = siteRow(m.siteCode, m.siteName, m.fundCode);
+    row.cents += m.amountCents;
+    row.months += 1;
+  }
+
+  // The payments to enter in Aplos: one per person, split by budget code.
+  const config = await readSettings(tx);
+  const accountRows = await tx.select({ number: accounts.number, aplosName: accounts.aplosName }).from(accounts);
+  const fundRows = await tx.select({ code: funds.code, aplosName: funds.aplosName }).from(funds);
+  const siteCodes = [...new Set([...trips.map((t) => t.siteCode), ...phoneMonths.map((m) => m.siteCode)].filter((c): c is string => Boolean(c)))];
+  const siteRows = siteCodes.length ? await tx.select({ code: sites.code, aplosName: sites.aplosName }).from(sites).where(inArray(sites.code, siteCodes)) : [];
+  const aplosNames: AplosNames = {
+    accounts: new Map(accountRows.map((a) => [a.number, a.aplosName])),
+    funds: new Map(fundRows.map((f) => [f.code, f.aplosName])),
+    sites: new Map(siteRows.flatMap((x) => (x.aplosName ? [[x.code, x.aplosName] as const] : []))),
+  };
+  const payments = buildPayments(
+    claims.map((c) => ({
+      ownerId: c.ownerId,
+      payee: c.aplosName?.trim() || c.ownerName,
+      type: asRequestType(c.requestType),
+      trips: trips.filter((t) => t.requestId === c.id),
+      phoneMonths: phoneMonths.filter((m) => m.requestId === c.id),
+    })),
+    config.aplosAccounts,
+    config.phoneMonthsPerClaim,
+    { accounts: new Set(accountRows.map((a) => a.number)) },
+  );
+
+  return {
+    ...batch,
+    payments,
+    aplosNames,
+    accountMapping: config.aplosAccounts,
+    phoneMonthsPerClaim: config.phoneMonthsPerClaim,
+    claims: claims.map((c) => {
+      const approval = approvals.find((a) => a.requestId === c.id);
+      const ts = trips.filter((t) => t.requestId === c.id);
+      return {
+        ...c,
+        type: asRequestType(c.requestType),
+        status: c.status as RequestStatus,
+        trips: ts,
+        phoneMonths: phoneMonths.filter((m) => m.requestId === c.id),
+        miles: ts.reduce((n, t) => n + Number(t.miles), 0),
+        approvedBy: approval?.actorName ?? null,
+        approvedAt: approval?.createdAt ?? null,
+      };
+    }),
+    bySite: [...bySite.values()].sort((a, b) => (Number(a.fundCode) || 0) - (Number(b.fundCode) || 0) || a.name.localeCompare(b.name)),
+  };
 }
 
 export type BatchDetail = NonNullable<Awaited<ReturnType<typeof batchDetail>>>;

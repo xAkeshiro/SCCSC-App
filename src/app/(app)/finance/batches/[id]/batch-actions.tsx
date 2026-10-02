@@ -5,22 +5,33 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { Button, Field, Notice } from "@/components/ui";
 import { useFormAction } from "@/components/use-form-action";
-import { saveCsv } from "@/components/download";
-import { exportBatchFile, markPaid, type FinanceState } from "../../actions";
+import { saveBase64, saveCsv } from "@/components/download";
+import { exportAplosFile, exportBatchFile, markPaid, type FinanceState } from "../../actions";
 
-/** Downloads the batch file, then refreshes the page to show it was exported. */
-export function ExportButtons({ batchId }: { batchId: string }) {
+/** Downloads the Aplos payments or the trip detail, then refreshes the page to show it was exported. */
+export function ExportButtons({ batchId, defaultDate, problems }: { batchId: string; defaultDate: string; problems: number }) {
   const router = useRouter();
-  const [busy, setBusy] = useState<string | null>(null);
+  const [busy, setBusy] = useState<"aplos" | "detail" | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [date, setDate] = useState(defaultDate);
+  const [firstCheck, setFirstCheck] = useState("");
 
-  async function download(format: "detail" | "summary") {
-    setBusy(format);
+  async function download(kind: "aplos" | "detail") {
+    if (kind === "aplos" && problems > 0 && !window.confirm(`${problems === 1 ? "1 line needs" : `${problems} lines need`} a look (see Payments for Aplos). Download anyway and fix it in Aplos?`)) {
+      return;
+    }
+    setBusy(kind);
     setError(null);
     try {
-      const file = await exportBatchFile(batchId, format);
-      if (!file.ok) throw new Error(file.error);
-      saveCsv(file.filename, file.csv);
+      if (kind === "aplos") {
+        const file = await exportAplosFile(batchId, { date, firstCheck });
+        if (!file.ok) throw new Error(file.error);
+        saveBase64(file.filename, file.base64, file.contentType);
+      } else {
+        const file = await exportBatchFile(batchId);
+        if (!file.ok) throw new Error(file.error);
+        saveCsv(file.filename, file.csv);
+      }
       router.refresh();
     } catch (err) {
       setError(err instanceof Error ? err.message : "The file couldn't be made. Please try again.");
@@ -30,18 +41,38 @@ export function ExportButtons({ batchId }: { batchId: string }) {
   }
 
   return (
-    <div className="space-y-3">
+    <div className="space-y-4">
       {error ? <Notice tone="error">{error}</Notice> : null}
+      <div className="grid grid-cols-2 items-end gap-3">
+        <Field label="Payment date" htmlFor="payment_date">
+          <input id="payment_date" type="date" className="field" value={date} onChange={(e) => setDate(e.target.value)} />
+        </Field>
+        <Field label={<>First check # <span className="font-normal text-ink-500">(optional)</span></>} htmlFor="first_check">
+          <input
+            id="first_check"
+            inputMode="numeric"
+            autoComplete="off"
+            className="field"
+            value={firstCheck}
+            onChange={(e) => setFirstCheck(e.target.value.replace(/\D/g, "").slice(0, 9))}
+            aria-describedby="first_check-hint"
+          />
+        </Field>
+      </div>
+      <p id="first_check-hint" className="-mt-2 text-sm text-ink-500">
+        With a first check number, each payment gets the next one, in the order shown.
+      </p>
       <div className="flex flex-wrap gap-2">
-        <Button type="button" onClick={() => download("detail")} disabled={busy !== null}>
-          <Download aria-hidden className="size-4" /> {busy === "detail" ? "Preparing…" : "Detail (CSV)"}
+        <Button type="button" onClick={() => download("aplos")} disabled={busy !== null}>
+          <Download aria-hidden className="size-4" /> {busy === "aplos" ? "Preparing…" : "Aplos payments (Excel)"}
         </Button>
-        <Button type="button" variant="secondary" onClick={() => download("summary")} disabled={busy !== null}>
-          <Download aria-hidden className="size-4" /> {busy === "summary" ? "Preparing…" : "Summary (CSV)"}
+        <Button type="button" variant="secondary" onClick={() => download("detail")} disabled={busy !== null}>
+          <Download aria-hidden className="size-4" /> {busy === "detail" ? "Preparing…" : "Trip detail (CSV)"}
         </Button>
       </div>
       <p className="text-sm text-ink-500">
-        Trip detail has one row per trip. Summary has one row per employee and school or site.
+        The Excel file is for the register import in Aplos: one payment per person, a row for each budget code. Trip detail has one row
+        per trip or phone month, for your records.
       </p>
     </div>
   );

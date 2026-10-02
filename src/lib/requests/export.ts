@@ -1,39 +1,19 @@
 import { dollars, toCsv } from "@/lib/csv";
 import type { BatchDetail } from "@/lib/data/finance";
+import { budgetCode } from "@/lib/budget-codes";
+import { mileageLabel, phoneLabel } from "@/lib/requests/aplos";
 import { formatMonth } from "@/lib/requests/phone";
 import { batchNumber, claimNumber } from "@/lib/requests/status";
 import { REQUEST_TYPES } from "@/lib/requests/types";
 
 /**
- * Batch export files. The financial system's import format is still an open question
- * (brief, open question 1), so these are two generic layouts finance can map or paste from:
- * - detail: one row per trip or phone bill month (for trips, everything the IRS expects: date,
- *   destination, purpose, miles).
- * - summary: one row per employee, school or site and type.
+ * The batch's trip detail: one row per trip or phone bill month, with everything the IRS expects
+ * for a trip (date, destination, purpose, miles), its budget code and its Aplos label. The payments
+ * themselves go to Aplos as an Excel file (`aplos.ts`).
  */
-export function batchCsv(batch: BatchDetail, format: "detail" | "summary"): string {
+export function batchCsv(batch: BatchDetail): string {
   const b = batchNumber(batch.ref);
-  if (format === "summary") {
-    const rows = new Map<string, { employee: string; site: string; type: string; items: number; miles: number; cents: number }>();
-    const add = (employee: string, site: string | null, type: keyof typeof REQUEST_TYPES, miles: number, cents: number) => {
-      const key = `${employee}|${site ?? ""}|${type}`;
-      const row = rows.get(key) ?? { employee, site: site ?? "", type: REQUEST_TYPES[type].label, items: 0, miles: 0, cents: 0 };
-      row.items += 1;
-      row.miles += miles;
-      row.cents += cents;
-      rows.set(key, row);
-    };
-    for (const c of batch.claims) {
-      for (const t of c.trips) add(c.ownerName, t.siteCode, "mileage", Number(t.miles), t.amountCents);
-      for (const m of c.phoneMonths) add(c.ownerName, m.siteCode, "phone", 0, m.amountCents);
-    }
-    return toCsv(
-      ["Batch", "Pay period start", "Pay period end", "Employee", "School or site", "Type", "Trips or months", "Miles", "Amount"],
-      [...rows.values()]
-        .sort((x, y) => x.employee.localeCompare(y.employee) || x.site.localeCompare(y.site) || x.type.localeCompare(y.type))
-        .map((r) => [b, batch.periodStart, batch.periodEnd, r.employee, r.site, r.type, r.items, r.miles.toFixed(1), dollars(r.cents)]),
-    );
-  }
+  const m = batch.accountMapping;
   return toCsv(
     [
       "Batch",
@@ -48,10 +28,14 @@ export function batchCsv(batch: BatchDetail, format: "detail" | "summary"): stri
       "To",
       "Round trip",
       "Business purpose",
+      "Direct or indirect",
       "School or site",
+      "Budget code",
+      "Label",
       "Miles",
       "Rate (cents)",
       "Rate per",
+      "Parking",
       "Amount",
       "Approved by",
       "Approved on",
@@ -59,6 +43,7 @@ export function batchCsv(batch: BatchDetail, format: "detail" | "summary"): stri
     batch.claims.flatMap((c) => {
       const approval = [c.approvedBy ?? "", c.approvedAt ? c.approvedAt.toISOString().slice(0, 10) : ""];
       const start = [b, batch.periodStart, batch.periodEnd, claimNumber(c.ref, c.type), c.ownerName];
+      const milLabel = c.trips.length ? mileageLabel(c.trips.map((t) => t.date)) : "";
       return [
         ...c.trips.map((t) => [
           ...start,
@@ -69,27 +54,35 @@ export function batchCsv(batch: BatchDetail, format: "detail" | "summary"): stri
           t.toLabel,
           t.roundTrip,
           t.purpose,
+          t.costType === "direct" ? "Direct" : t.costType === "indirect" ? "Indirect" : "",
           t.siteCode ?? "",
+          budgetCode(t.costType === "direct" ? m.mileageDirect : t.costType === "indirect" ? m.mileageIndirect : null, t.fundCode, t.siteCode),
+          milLabel,
           Number(t.miles).toFixed(1),
           Number(t.rateCents).toFixed(2),
           "mile",
+          t.parkingCents ? dollars(t.parkingCents) : "",
           dollars(t.amountCents),
           ...approval,
         ]),
-        ...c.phoneMonths.map((m) => [
+        ...c.phoneMonths.map((p) => [
           ...start,
           REQUEST_TYPES.phone.label,
-          m.month,
+          p.month,
           "",
           "",
           "",
           "",
-          `Phone bill, ${formatMonth(m.month)}`,
-          m.siteCode ?? "",
+          `Phone bill, ${formatMonth(p.month)}`,
           "",
-          Number(m.rateCents).toFixed(2),
+          p.siteCode ?? "",
+          budgetCode(m.phone, p.fundCode, p.siteCode),
+          phoneLabel(p.month, batch.phoneMonthsPerClaim),
+          "",
+          Number(p.rateCents).toFixed(2),
           "month",
-          dollars(m.amountCents),
+          "",
+          dollars(p.amountCents),
           ...approval,
         ]),
       ];

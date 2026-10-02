@@ -1,4 +1,4 @@
-import { ArrowLeft, Check, Printer, X } from "lucide-react";
+import { AlertTriangle, ArrowLeft, Check, Printer, X } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -17,7 +17,7 @@ import { ExportButtons, MarkPaidForm } from "./batch-actions";
 export const metadata: Metadata = { title: "Batch" };
 
 const DONE: Record<string, string> = {
-  created: "Batch created. Next, download the file for the financial system.",
+  created: "Batch created. Next, check the payments and download the file for Aplos.",
   added: "Claims added to the batch.",
   removed: "Claim removed from the batch. It's back in the list of approved claims.",
   paid: "Batch marked as paid. Everyone in it can see their claim is paid.",
@@ -31,9 +31,12 @@ export default async function BatchPage({ params, searchParams }: PageProps<"/fi
   if (!batch) notFound();
   const name = batchNumber(batch.ref);
   const miles = batch.claims.reduce((n, c) => n + c.miles, 0);
+  const problems = batch.payments.reduce((n, p) => n + p.lines.filter((l) => l.problems.length).length, 0);
+  const aplos = (map: Map<string, string>, key: string | null) => (key ? (map.get(key) ?? key) : "—");
+  const KIND = { mileage: "Mileage", parking: "Parking", phone: "Phone" } as const;
   const steps = [
     { label: "Check the claims", done: true },
-    { label: "Download the file", done: batch.status !== "open" },
+    { label: "Download for Aplos", done: batch.status !== "open" },
     { label: "Mark as paid", done: batch.status === "paid" },
   ];
 
@@ -146,6 +149,87 @@ export default async function BatchPage({ params, searchParams }: PageProps<"/fi
             </div>
           </section>
 
+          <section aria-labelledby="aplos">
+            <h2 id="aplos" className="text-2xl">
+              Payments for Aplos
+            </h2>
+            <p className="mt-1 text-ink-500">
+              One payment per person, split by budget code, the way you enter it in the Aplos register. The memo lists each claim&apos;s
+              label: MIL and the date of the last trip, CELL and the last day of the phone bill period.
+            </p>
+            {problems ? (
+              <Notice tone="warning" title={`${plural(problems, "line needs", "lines need")} a look`} className="mt-4">
+                They&apos;re marked below. Fix the account in Admin, Budget codes, or correct the line in Aplos after the import.
+              </Notice>
+            ) : null}
+            <div className="mt-4 space-y-4">
+              {batch.payments.map((p) => (
+                <article key={p.ownerId} className="card overflow-hidden" aria-label={`Payment to ${p.payee}`}>
+                  <div className="flex flex-wrap items-start justify-between gap-x-4 gap-y-1 border-b border-ink-100 px-5 py-4">
+                    <div className="min-w-0">
+                      <h3 className="text-lg">{p.payee}</h3>
+                      <p className="text-sm text-ink-500">
+                        Memo <span className="font-semibold text-ink tabular-nums">{p.memo}</span>
+                      </p>
+                    </div>
+                    <p className="font-display text-xl font-semibold text-brand-600">{formatCents(p.totalCents)}</p>
+                  </div>
+                  {/* Phones: each split stacked. Wider screens: a table like the Aplos screen. */}
+                  <ul className="divide-y divide-ink-100 text-sm sm:hidden">
+                    {p.lines.map((l) => (
+                      <li key={`${l.label}|${l.kind}|${l.budgetCode}`} className={cx("px-5 py-3", l.problems.length > 0 && "bg-status-returned-bg")}>
+                        <div className="flex items-baseline justify-between gap-3">
+                          <span className="font-display font-semibold whitespace-nowrap tabular-nums">{l.budgetCode}</span>
+                          <span className="font-semibold">{formatCents(l.cents)}</span>
+                        </div>
+                        <p className="text-ink-500">
+                          {KIND[l.kind]} · {l.label}
+                        </p>
+                        <LineProblems problems={l.problems} />
+                        <dl className="mt-1 grid grid-cols-[4.5rem_1fr] gap-x-2 text-ink-700">
+                          <dt className="text-ink-500">Account</dt>
+                          <dd>{aplos(batch.aplosNames.accounts, l.account)}</dd>
+                          <dt className="text-ink-500">Fund</dt>
+                          <dd>{aplos(batch.aplosNames.funds, l.fund)}</dd>
+                          <dt className="text-ink-500">School</dt>
+                          <dd>{aplos(batch.aplosNames.sites, l.site)}</dd>
+                        </dl>
+                      </li>
+                    ))}
+                  </ul>
+                  <table className="hidden w-full text-left text-sm sm:table">
+                    <thead className="text-ink-500">
+                      <tr>
+                        <th scope="col" className="px-5 py-2 font-semibold">Budget code</th>
+                        <th scope="col" className="px-3 py-2 font-semibold">Account</th>
+                        <th scope="col" className="px-3 py-2 font-semibold">Fund</th>
+                        <th scope="col" className="px-3 py-2 font-semibold">School tag</th>
+                        <th scope="col" className="px-3 py-2 font-semibold">Comment</th>
+                        <th scope="col" className="px-5 py-2 text-right font-semibold">Amount</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-ink-100 border-t border-ink-100">
+                      {p.lines.map((l) => (
+                        <tr key={`${l.label}|${l.kind}|${l.budgetCode}`} className={l.problems.length ? "bg-status-returned-bg" : undefined}>
+                          <td className="px-5 py-2.5 align-top">
+                            <span className="font-display font-semibold whitespace-nowrap tabular-nums">{l.budgetCode}</span>
+                            <span className="block text-ink-500">{KIND[l.kind]}</span>
+                            <LineProblems problems={l.problems} />
+                          </td>
+                          <td className="px-3 py-2.5 align-top">{aplos(batch.aplosNames.accounts, l.account)}</td>
+                          <td className="px-3 py-2.5 align-top">{aplos(batch.aplosNames.funds, l.fund)}</td>
+                          <td className="px-3 py-2.5 align-top">{aplos(batch.aplosNames.sites, l.site)}</td>
+                          <td className="px-3 py-2.5 align-top whitespace-nowrap tabular-nums">{l.label}</td>
+                          <td className="px-5 py-2.5 text-right align-top font-semibold whitespace-nowrap">{formatCents(l.cents)}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </article>
+              ))}
+            </div>
+          </section>
+
           <section aria-labelledby="sites">
             <h2 id="sites" className="text-2xl">
               By school or site
@@ -170,16 +254,13 @@ export default async function BatchPage({ params, searchParams }: PageProps<"/fi
 
         <aside className="space-y-6">
           <Card className="space-y-4 p-5">
-            <h2 className="text-lg">Download for the financial system</h2>
+            <h2 className="text-lg">Download for Aplos</h2>
             <p className="text-sm text-ink-500">
               {batch.exportedAt
                 ? `Downloaded ${formatDateTime(batch.exportedAt)}${batch.exportedBy ? ` by ${batch.exportedBy}` : ""}. You can download it again.`
                 : "Downloading freezes the batch, so no claims can be added or removed afterwards."}
             </p>
-            {batch.claims.length > 0 ? <ExportButtons batchId={batch.id} /> : null}
-            <p className="text-xs text-ink-500">
-              These are general spreadsheet layouts until we know the financial system&apos;s import format.
-            </p>
+            {batch.claims.length > 0 ? <ExportButtons batchId={batch.id} defaultDate={batch.paidOn ?? todayIso()} problems={problems} /> : null}
           </Card>
           <Card className="space-y-4 p-5">
             <h2 className="text-lg">Payment</h2>
@@ -198,4 +279,12 @@ export default async function BatchPage({ params, searchParams }: PageProps<"/fi
       </div>
     </Container>
   );
+}
+
+function LineProblems({ problems }: { problems: string[] }) {
+  return problems.map((x) => (
+    <span key={x} className="mt-1 flex items-center gap-1 font-semibold text-status-returned">
+      <AlertTriangle aria-hidden className="size-3.5 shrink-0" /> {x}
+    </span>
+  ));
 }

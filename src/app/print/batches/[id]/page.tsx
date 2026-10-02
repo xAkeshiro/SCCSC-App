@@ -80,6 +80,34 @@ export default async function PrintBatchPage({ params }: PageProps<"/print/batch
       </table>
 
       <div>
+        <p className="font-semibold">Payments (as entered in Aplos)</p>
+        <table className="mt-1 w-full border-collapse text-left">
+          <thead>
+            <tr className="border-b border-ink text-[12px]">
+              <th className="py-1 pr-2 font-semibold">Payee</th>
+              <th className="py-1 pr-2 font-semibold">Memo</th>
+              <th className="py-1 pr-2 font-semibold">Budget code</th>
+              <th className="py-1 pr-2 font-semibold">Comment</th>
+              <th className="py-1 text-right font-semibold">Amount</th>
+            </tr>
+          </thead>
+          <tbody>
+            {batch.payments.flatMap((p) =>
+              p.lines.map((l, i) => (
+                <tr key={`${p.ownerId}|${l.label}|${l.kind}|${l.budgetCode}`} className={i === p.lines.length - 1 ? "border-b border-ink-100" : undefined}>
+                  <td className="py-1 pr-2">{i === 0 ? p.payee : ""}</td>
+                  <td className="py-1 pr-2">{i === 0 ? p.memo : ""}</td>
+                  <td className="py-1 pr-2 whitespace-nowrap tabular-nums">{l.budgetCode}</td>
+                  <td className="py-1 pr-2">{l.label}</td>
+                  <td className="py-1 text-right">{formatCents(l.cents)}</td>
+                </tr>
+              )),
+            )}
+          </tbody>
+        </table>
+      </div>
+
+      <div>
         <p className="font-semibold">By school or site</p>
         <table className="mt-1 w-full max-w-md border-collapse text-left">
           <tbody>

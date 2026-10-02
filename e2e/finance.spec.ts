@@ -11,15 +11,29 @@ test("finance batches approved claims, exports the file, and marks them paid", a
   await expect(page).toHaveURL(/\/finance\/batches\/[0-9a-f-]{36}\?done=created/);
   const batchName = (await page.getByRole("heading", { level: 1 }).textContent())!.match(/B-\d+/)![0];
 
-  // Download the detail file.
+  // One payment per person, split by budget code, with the claim labels in the memo.
+  const owen = page.getByRole("article", { name: "Payment to Owen Castellano" });
+  await expect(owen).toContainText(/Memo MIL\d{6}/);
+  await expect(owen.getByRole("cell", { name: /^57\d\d-\d+-\d+/ }).first()).toBeVisible();
+
+  // Download the payments for Aplos, numbered from a first check number.
+  await page.getByLabel("First check #").fill("1040");
+  const aplosPromise = page.waitForEvent("download");
+  await page.getByRole("button", { name: "Aplos payments (Excel)" }).click();
+  const aplos = await aplosPromise;
+  expect(aplos.suggestedFilename()).toBe(`${batchName}-aplos-payments.xlsx`);
+  expect(readFileSync(await aplos.path()).subarray(0, 2).toString()).toBe("PK");
+
+  // And the trip detail.
   const downloadPromise = page.waitForEvent("download");
-  await page.getByRole("button", { name: "Detail (CSV)" }).click();
+  await page.getByRole("button", { name: "Trip detail (CSV)" }).click();
   const download = await downloadPromise;
   expect(download.suggestedFilename()).toBe(`${batchName}-detail.csv`);
   const csv = readFileSync(await download.path(), "utf8");
   expect(csv).toContain("Batch,Pay period start,Pay period end,Claim,Employee,Type,Date");
   expect(csv).toContain("Owen Castellano");
   expect(csv).toContain("Workforce board meeting");
+  expect(csv).toMatch(/,57\d\d-\d+-\d+,MIL\d{6},/);
   // Phone bills are paid in the same batches.
   expect(csv).toContain(",Phone bill,");
 
